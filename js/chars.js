@@ -1,64 +1,71 @@
-/* Math Quest V2 — ตัวละครเดินได้ 4 ทิศ (16×24 พิกเซล, ทิศละ 3 เฟรม)
+/* Math Quest V2 — ตัวละครเดินได้ 4 ทิศ (16×32 พิกเซล สัดส่วนสูงแบบเกมฟาร์ม, ทิศละ 3 เฟรม)
    ประกอบจากชั้น: ร่างพื้นฐาน + ทรงผม/หมวก + เสื้อผ้า แล้วใส่สีตามอาชีพ
    ตัวอักษรในแม่แบบ: H/h=ผม(เงา) s/S=ผิว(เงา) k=ตา w=ขาว m=แก้ม R=ปาก C/c=เสื้อ(เงา) A/a=ลาย D/d=กางเกง(เงา) F=รองเท้า
                      T/t=หมวก(เงา) Y=ทอง B=เครา/ผ้าคลุมหน้า */
 
-const CHAR_W=16,CHAR_H=24;
+const CHAR_W=16,CHAR_H=32;
+const LEG_ROW=26;                // แถวแรกของขา (สลับตอนก้าวเดิน)
 const CHAR_BASE={
   down:[
-"................","......HHHH......","....HHHHHHHH....","...HHHHHHHHHH...",
-"..HHHHHHHHHHHH..","..HHhHHHHHHhHH..","..HhssHHHHsshH..","..HssssssssssH..",
-"..HsskwsskwssH..","..HsskksskkssH..","..HsmssssssmsH..","...SsssRRsssS...",
-"....SSssssSS....","....cCwsswCc....","...cCCCAACCCc...","..scCCCAACCCcs..",
-"..scCCCAACCCcs..","..sscCCCCCCcss..","....cCCCCCCc....","....DDDDDDDD....",
-"....DDDddDDD....","....DDD..DDD....","....dDD..DDd....","...FFFF..FFFF..."],
+"................","................",".....HHHHHH.....","....HHHHHHHH....",
+"...HHHHHHHHHH...","...HHHHHHHHHH...","...HHhHHHHhHH...","...HhsssssshH...",
+"...HssssssssH...","...sshhsshhss...","...sskWsskWss...","...sskksskkss...",
+"...SmssssssmS...","....SssRRssS....",".....SSSSSS.....","......ssss......",
+"....cCCwwCCc....","...cCCCCCCCCc...","..CCcCCAACCcCC..","..CCcCCAACCcCC..",
+"..CCcCCAACCcCC..","..ccCCCAACCCcc..","..sscCCCCCCcss..","....DDDDDDDD....",
+"....DDDDDDDD....","....DDDddDDD....","....DDD..DDD....","....DDD..DDD....",
+"....DDD..DDD....","....dDD..DDd....","...FFFF..FFFF...","................"],
   up:[
-"................","......HHHH......","....HHHHHHHH....","...HHHHHHHHHH...",
-"..HHHHHHHHHHHH..","..HHHHhHHhHHHH..","..HHHhHHHHhHHH..","..HHHHHHHHHHHH..",
-"..HhHHHHHHHHhH..","..HHhHHHHHHhHH..","..HHHHHHHHHHHH..","...hHHHHHHHHh...",
-"....SSssssSS....","....cCCCCCCc....","...cCCCCCCCCc...","..scCCCCCCCCcs..",
-"..scCCCCCCCCcs..","..sscCCCCCCcss..","....cCCCCCCc....","....DDDDDDDD....",
-"....DDDddDDD....","....DDD..DDD....","....dDD..DDd....","...FFFF..FFFF..."],
+"................","................",".....HHHHHH.....","....HHHHHHHH....",
+"...HHHHHHHHHH...","...HHHHHHHHHH...","...HHHHHHHHHH...","...HHHHHHHHHH...",
+"...HHHHHHHHHH...","...HHHHHHHHHH...","...hHHHHHHHHh...","...hHHHHHHHHh...",
+"...hhHHHHHHhh...","....hhhhhhhh....",".....SSSSSS.....","......SSSS......",
+"....cCCCCCCc....","...cCCCCCCCCc...","..CCcCCCCCCcCC..","..CCcCCCCCCcCC..",
+"..CCcCCCCCCcCC..","..ccCCCCCCCCcc..","..sscCCCCCCcss..","....DDDDDDDD....",
+"....DDDDDDDD....","....DDDddDDD....","....DDD..DDD....","....DDD..DDD....",
+"....DDD..DDD....","....dDD..DDd....","...FFFF..FFFF...","................"],
   side:[
-"................",".....HHHHH......","....HHHHHHHH....","...HHHHHHHHHH...",
-"...HHHHHHHHHHH..","...HHHHHHHhHHH..","...HHHHHhssshH..","...HHHHsssssss..",
-"...HHHssssskwss.","...HHHssssskkss.","...hHHsssssmss..","....hHSssssRs...",
-".....SSsssSS....",".....cCCwCCc....","....cCCCCCCc....","....cCCCCCCsc...",
-"....cCCCCCCsc...","....cCCCCCCcc...",".....cCCCCCc....",".....DDDDDD.....",
-".....DDddDD.....",".....DDDDDD.....","......dDDd......","......FFFFF....."]
+"................","................",".....HHHHHH.....","....HHHHHHHH....",
+"...HHHHHHHHHH...","...HHHHHHHHHHH..","...HHHHHHHHhHH..","...HHHHHhssshH..",
+"...HHHHsssssss..","...HHHssssshhs..","...HHHsssssWks..","...hHHssssskks..",
+"...hHHSssssssss.","....hHSssssRs...",".....HSSSSSS....","......SSss......",
+".....cCCwwCc....",".....cCCCCCCc...",".....cCCCCCCc...",".....cCCcCCCc...",
+".....cCCcCCCc...",".....cCCcCCCc...",".....cCCsCCCc...",".....DDDDDDDD...",
+".....DDDDDDDD...",".....DDDDdDDD...","......DDDDDD....","......DDDDDD....",
+"......DDDDDD....","......dDDDDd....","......FFFFFFF...","................"]
 };
-// ขาตอนก้าวเดิน (แทนแถว 21–23)
+// ขาตอนก้าวเดิน (แทนแถว 26–30)
 const CHAR_LEGS={
-  down:{a:["....DDD..DDD....","....FFF..DDd....",".........FFFF..."],b:["....DDD..DDD....","....dDD..FFF....","...FFFF........."]},
-  up:{a:["....DDD..DDD....","....FFF..DDd....",".........FFFF..."],b:["....DDD..DDD....","....dDD..FFF....","...FFFF........."]},
-  side:{a:[".....DD..DD.....","....dD....Dd....","...FFF....FFF..."],b:[".....DD..DD.....","....dD....Dd....","...FFF....FFF..."]}
+  down:{a:["....DDD..DDD....","....DDD..DDD....","....FFF..DDD....",".........DDd....",".........FFFF..."],
+        b:["....DDD..DDD....","....DDD..DDD....","....DDD..FFF....","....dDD.........","...FFFF........."]},
+  up:{a:["....DDD..DDD....","....DDD..DDD....","....FFF..DDD....",".........DDd....",".........FFFF..."],
+      b:["....DDD..DDD....","....DDD..DDD....","....DDD..FFF....","....dDD.........","...FFFF........."]},
+  side:{a:[".....DDD..DDD...","....DDD....DDD..","....DDD....DDD..","...dDD......DDd.","...FFF.......FFF"],
+        b:["......DDDDD.....",".....DDD.DDD....","....DDD...DDD...","....dDD...DDd...","...FFFF..FFFF..."]}
 };
 // ทรงผม/หมวก/เครื่องแต่งกาย: ทับแม่แบบ ("." = ไม่เปลี่ยน)
+const HAT_WIZ={0:"........TT......",1:".......TTT......",2:"......TTTTT.....",3:".....TTTYTTT....",4:"....TTTTTTTT....",5:"..TTTTTTTTTTTT..",6:".tTTTTTTTTTTTTt."};
+const HAT_HARD={1:"......TTTT......",2:"....TTTTTTTT....",3:"...TTTTTTTTTT...",4:"..TTTTTTTTTTTT..",5:"..TTTTTTTTTTTT..",6:".tTTTTTTTTTTTTt."};
+const HAT_STRAW={3:"....TTTTTTTT....",4:"...TTTTTTTTTT...",5:"...TtttttttttT..",6:"TTTTTTTTTTTTTTTT"};
 const CHAR_STYLES={
-  long:{down:{11:".HH..........HH.",12:".HH..........HH.",13:".HH..........HH.",14:"..H..........H.."},
-        up:{11:"..HHHHHHHHHHHH..",12:"..HHHHHHHHHHHH..",13:"...HHHHHHHHHH...",14:"....HHHHHHHH...."},
-        side:{11:"..HHH...........",12:"..HHH...........",13:"..HH............",14:"...H............"}},
-  helmet:{down:{0:".......AA.......",1:"......TTTT......",6:"..TtssTTTTsstT..",7:"..TssssssssssT.."},
-          up:{0:".......AA.......",1:"......TTTT......"},
-          side:{0:"......AA........",1:".....TTTTT......"}},
-  wizard:{down:{0:"........TT......",1:".......TTT......",2:"......TTTTT.....",3:".....TTTYTTT....",4:"..TTTTTTTTTTTT..",5:".TTTTTTTTTTTTTT.",11:"...SwwwwwwwwS...",12:"....wwwwwwww....",13:"....cwwwwwwc....",14:"...cCwwwwwwCc...",15:"..scCCwwwwCCcs.."},
-          up:{0:"........TT......",1:".......TTT......",2:"......TTTTT.....",3:".....TTTTTTT....",4:"..TTTTTTTTTTTT..",5:".TTTTTTTTTTTTTT."},
-          side:{0:".......TT.......",1:"......TTT.......",2:".....TTTTT......",3:"....TTTYTTT.....",4:"..TTTTTTTTTTTT..",5:".TTTTTTTTTTTTTT.",11:"....hHSwwwwwww..",12:".....SSwwwww....",13:".....cCwwwCc...."}},
-  hood:{down:{10:"..HHHHHHHHHHHH..",11:"...HHHHHHHHHH...",12:"....hHHHHHHh...."},
-        up:{},
-        side:{10:"...hHHHHHHHHHH..",11:"....hHHHHHHHH...",12:".....hHHHHH....."}},
+  long:{down:{12:"..HH........HH..",13:"..HH........HH..",14:"..HH........HH..",15:"..HHH......HHH..",16:"..HH........HH..",17:"...H........H..."},
+        up:{13:"...HHHHHHHHHH...",14:"...HHHHHHHHHH...",15:"...HHHHHHHHHH...",16:"....HHHHHHHH....",17:"....HHHHHHHH....",18:".....HHHHHH....."},
+        side:{12:"..HH............",13:"..HHH...........",14:"..HHH...........",15:"..HHH...........",16:"...HH...........",17:"...H............"}},
+  helmet:{down:{0:".......AA.......",1:"......AAAA......"},up:{0:".......AA.......",1:"......AAAA......"},side:{0:"......AA........",1:".....AAAA......."}},
+  wizard:{down:Object.assign({},HAT_WIZ,{12:"...wwssssssww...",13:"....wwwRRwww....",14:".....wwwwww.....",15:"......wwww......",16:"....cCwwwwCc....",17:"...cCCCwwCCCc..."}),
+          up:HAT_WIZ,
+          side:{0:".......TT.......",1:"......TTT.......",2:".....TTTTT......",3:"....TTTYTTT.....",4:"...TTTTTTTT.....",5:"..TTTTTTTTTTTT..",6:".tTTTTTTTTTTTTT.",
+                12:"...hHHSwwwwwwww.",13:"....hHSwwwwww...",14:".....HSwwwww....",15:"......wwww......"}},
+  hood:{down:{12:"...HHHHHHHHHH...",13:"....HHHHHHHH....",14:".....HHHHHH....."},up:{},
+        side:{12:"...hHHHHHHHHHHH.",13:"....hHHHHHHHH...",14:".....HHHHHHH...."}},
   crown:{down:{0:"....Y.Y..Y.Y....",1:"....YYYYYYYY...."},up:{0:"....Y.Y..Y.Y....",1:"....YYYYYYYY...."},side:{0:"....Y.Y.Y.......",1:"....YYYYYY......"}},
-  hardhat:{down:{1:"......TTTT......",2:"....TTTTTTTT....",3:"...TTTTTTTTTT...",4:"..TTTTTTTTTTTT..",5:".tTTTTTTTTTTTTt."},
-           up:{1:"......TTTT......",2:"....TTTTTTTT....",3:"...TTTTTTTTTT...",4:"..TTTTTTTTTTTT..",5:".tTTTTTTTTTTTTt."},
-           side:{1:".....TTTTT......",2:"....TTTTTTTT....",3:"...TTTTTTTTTT...",4:"...TTTTTTTTTTT..",5:"..tTTTTTTTTTTTTT"}},
-  strawhat:{down:{2:"....TTTTTTTT....",3:"...TTTTTTTTTT...",4:"...TtttttttttT..",5:"TTTTTTTTTTTTTTTT"},
-            up:{2:"....TTTTTTTT....",3:"...TTTTTTTTTT...",4:"...TtttttttttT..",5:"TTTTTTTTTTTTTTTT"},
-            side:{2:"....TTTTTTTT....",3:"...TTTTTTTTTT...",4:"...TtttttttttT..",5:".TTTTTTTTTTTTTTT"}},
+  hardhat:{down:HAT_HARD,up:HAT_HARD,side:Object.assign({},HAT_HARD,{1:".....TTTTT......",4:"...TTTTTTTTTTT..",5:"...TTTTTTTTTTT..",6:"..tTTTTTTTTTTTTT"})},
+  strawhat:{down:HAT_STRAW,up:HAT_STRAW,side:Object.assign({},HAT_STRAW,{6:".TTTTTTTTTTTTTTT"})},
   // เครื่องแต่งกายช่วงล่าง
-  skirt:{all:{19:"...DDDDDDDDDD...",20:"...DDdDDDDdDD...",21:"..DDDDDDDDDDDD.."},legs:"skin"},
-  robe:{all:{19:"....CCCCCCCC....",20:"...cCCCCCCCCc...",21:"...cCCCCCCCCc...",22:"...cCCCCCCCCc..."},legs:"robe"},
-  apron:{down:{14:"...cCwwwwwwCc...",15:"..scCwwwwwwCcs..",16:"..scCwwwwwwCcs..",17:"..sscwwwwwwcss..",18:"....wwwwwwww...."}},
-  epaulet:{down:{13:"...YcCwsswCcY...",14:"..YcCCAAAACCcY.."},side:{13:"....YcCCwCCc...."}}
+  skirt:{all:{23:"....DDDDDDDD....",24:"...DDDDDDDDDD...",25:"...DDdDDDDdDD...",26:"..DDDDDDDDDDDD.."},legs:"skin"},
+  robe:{all:{23:"...cCCCCCCCCc...",24:"...cCCCCCCCCc...",25:"...cCCcCCcCCc...",26:"...cCCCCCCCCc...",27:"...cCCCCCCCCc...",28:"...cCCCCCCCCc...",29:"...cccccccccc..."},legs:"robe"},
+  apron:{down:{17:"...cCwwwwwwCc...",18:"..CCcwwwwwwcCC..",19:"..CCcwwwwwwcCC..",20:"..CCcwwwwwwcCC..",21:"..ccCwwwwwwCcc..",22:"..sscwwwwwwcss..",23:"....wwwwwwww....",24:"....wwwwwwww...."}},
+  epaulet:{down:{17:"...YYCCCCCCYY..."},side:{17:".....YYCCCCCc..."}}
 };
 
 // สีของแต่ละอาชีพ/NPC (hex) — เงาคำนวณอัตโนมัติ
@@ -96,7 +103,7 @@ const overlay_=(row,ov)=>[...row].map((ch,i)=>ov[i]&&ov[i]!=="."?ov[i]:ch).join(
 function charGrid_(key,dir,frame){
   const spec=CHAR_SPECS[key]||CHAR_SPECS.student_m,col=charColors_(spec);
   let rows=CHAR_BASE[dir].slice();
-  if(frame){const legs=CHAR_LEGS[dir][frame===1?"a":"b"];rows[21]=legs[0];rows[22]=legs[1];rows[23]=legs[2]}
+  if(frame){const legs=CHAR_LEGS[dir][frame===1?"a":"b"];legs.forEach((r,i)=>{rows[LEG_ROW+i]=r})}
   let legsMode=null;
   (spec.styles||[]).forEach(st=>{
     const S=CHAR_STYLES[st];if(!S)return;
@@ -104,8 +111,7 @@ function charGrid_(key,dir,frame){
     Object.entries(ov).forEach(([i,r])=>{rows[+i]=overlay_(rows[+i],r)});
     if(S.legs)legsMode=S.legs;
   });
-  if(legsMode==="skin")for(let i=22;i<24;i++)rows[i]=rows[i].replace(/D/g,"s").replace(/d/g,"S");
-  if(legsMode==="robe")rows[23]=rows[23].replace(/F/g,frame?"F":"F");
+  if(legsMode==="skin")for(let i=LEG_ROW+1;i<CHAR_H-1;i++)rows[i]=rows[i].replace(/D/g,"s").replace(/d/g,"S");
   if(spec.beard)col.w=spec.beard;
   return rows.map(r=>[...r].map(ch=>ch==="."?null:(col[ch]||null)));
 }

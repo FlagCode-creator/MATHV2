@@ -25,7 +25,7 @@ async function enterExplore(){
   if(first)await exSay_([
     {mood:"hello",text:"ยินดีต้อนรับสู่โหมดผจญภัย! ตอนนี้เธอเดินสำรวจหมู่บ้านและทุ่งหญ้าได้เองแล้ว"},
     {mood:"explain",text:"ใช้ปุ่มลูกศรด้านล่างซ้ายเพื่อเดิน กดปุ่ม A เพื่อคุย อ่านป้าย หรือเปิดหีบ (บนคอมใช้ลูกศร/WASD และ Space)"},
-    {mood:"remind",text:"ครูรออยู่ที่ลานกลางหมู่บ้าน มาคุยกับครูก่อนนะ แล้วครูจะบอกภารกิจแรกให้"}
+    {mood:"remind",text:"ครูรออยู่ที่ลานน้ำพุกลางหมู่บ้าน มาคุยกับครูก่อนนะ แล้วครูจะบอกภารกิจแรกให้"}
   ]);
 }
 function showExplore_(){
@@ -76,7 +76,7 @@ function loadMap_(mapId,x,y,dir){
   X.ctx=X.canvas.getContext("2d");
   if(blocked_(x,y)&&!(m.warps||[]).some(w=>w.x===x&&w.y===y)){X.p.x=X.p.fx=m.spawn.x;X.p.y=X.p.fy=m.spawn.y;e.x=m.spawn.x;e.y=m.spawn.y}
   if(m.zones)m.zones.forEach(z=>z.monsters.forEach(([mx,my],i)=>{
-    X.mons.push({id:z.id+i,stage:z.stage,x:mx,y:my,fx:mx,fy:my,t:1,y0:z.y0,y1:z.y1,next:performance.now()+rng(600,2000)});
+    X.mons.push({id:z.id+i,stage:z.stage,x:mx,y:my,fx:mx,fy:my,t:1,zone:z,next:performance.now()+rng(600,2000)});
   }));
   buildBase_();
   persist();
@@ -86,14 +86,14 @@ function tileAt_(x,y){
   const m=X.m;if(y<0||y>=X.H||x<0||x>=X.W)return "T";
   const ch=m.rows[y][x],e=save.explore;
   if(ch==="G"||ch==="b"){
-    for(const [gid,g] of Object.entries(m.gates||{})){
-      const ys=g.rows||[g.y];
-      if(ys.includes(y)&&g.xs.includes(x))return e.open[gid]?(ch==="b"?"=":":"):ch;
-    }
+    const gid=gateAt_(x,y);
+    if(gid)return e.open[gid]?(ch==="b"?"=":":"):ch;
   }
   if(ch==="c"){const c=(m.chests||[]).find(c=>c.x===x&&c.y===y);if(c&&e.chests[c.id])return "C"}
   return ch;
 }
+function gateAt_(x,y){for(const [gid,g] of Object.entries(X.m.gates||{}))if(g.cells.some(([gx,gy])=>gx===x&&gy===y))return gid;return null}
+const inZone_=(z,x,y)=>x>=z.x0&&x<=z.x1&&y>=z.y0&&y<=z.y1;
 function blocked_(x,y){const t=tileAt_(x,y);return TILE_BLOCK.has(t)||t==="C"}
 function npcAt_(x,y){return X.npcs.find(n=>n.x===x&&n.y===y)}
 function monAt_(x,y){return X.mons.find(m=>m.x===x&&m.y===y)}
@@ -166,8 +166,8 @@ function arrived_(){
 }
 // เข้าโซนใหม่ → แสดงชื่อพื้นที่
 function checkZone_(){
-  const p=X.p,z=(X.m.zones||[]).find(z=>p.y>=z.y0&&p.y<=z.y1);
-  const zid=z?z.id:(p.y<8&&X.mapId==="field"?"boss":X.mapId);
+  const p=X.p,z=(X.m.zones||[]).find(z=>inZone_(z,p.x,p.y)),ba=X.m.bossArea;
+  const zid=z?z.id:(ba&&p.x>=ba.x0&&p.x<=ba.x1?"boss":X.mapId);
   if(zid!==X.zone){X.zone=zid;showArea_(z?`${ZONE_NAMES[z.id]} · หน่วย${TOPICS[z.stage]}`:zid==="boss"?"👑 ลานบอส":X.m.name)}
 }
 function warpTo_(w){
@@ -195,7 +195,7 @@ function updateMonsters_(now){
     m.next=now+rng(700,1700);
     if(Math.random()<0.3)return;
     const dir=pickOne(Object.keys(DIRS)),[dx,dy]=DIRS[dir],nx=m.x+dx,ny=m.y+dy;
-    if(ny<m.y0||ny>m.y1||blocked_(nx,ny)||npcAt_(nx,ny)||monAt_(nx,ny))return;
+    if(!inZone_(m.zone,nx,ny)||blocked_(nx,ny)||npcAt_(nx,ny)||monAt_(nx,ny))return;
     if(nx===X.p.x&&ny===X.p.y){if(now>X.invulnUntil&&X.p.t>=1)startFieldBattle_(m);return}
     m.sx=m.x;m.sy=m.y;m.x=nx;m.y=ny;m.t0=now;m.t=0;m.flip=dx<0?true:dx>0?false:m.flip;
   });
@@ -214,13 +214,18 @@ function drawExplore_(now){
   c.drawImage(X.base[X.frame],-camX,-camY);
   const ents=[];
   // ต้นไม้ / เสาไฟ (วัตถุสูง) เฉพาะที่อยู่ในจอ
-  const tx0=Math.max(0,Math.floor(camX/TS)-1),tx1=Math.min(X.W-1,Math.ceil((camX+vw)/TS)+1);
-  const ty0=Math.max(0,Math.floor(camY/TS)-1),ty1=Math.min(X.H-1,Math.ceil((camY+vh)/TS)+2);
+  const tx0=Math.max(0,Math.floor(camX/TS)-2),tx1=Math.min(X.W-1,Math.ceil((camX+vw)/TS)+2);
+  const ty0=Math.max(0,Math.floor(camY/TS)-1),ty1=Math.min(X.H-1,Math.ceil((camY+vh)/TS)+4);
   for(let y=ty0;y<=ty1;y++)for(let x=tx0;x<=tx1;x++){
     const ch=X.m.rows[y][x];
-    if(ch==="T"){const v=Math.floor(hash2_(x,y,7)*3);ents.push({y:y+0.2,draw:()=>{
-      c.fillStyle="rgba(10,30,10,.28)";c.fillRect(x*TS-3-camX,y*TS+12-camY,22,4);
-      c.drawImage(tallCanvas("tree",v),x*TS+8-16-camX,y*TS+17-40-camY)}})}
+    if(ch==="T"){const v=Math.floor(hash2_(x,y,7)*3),tc=tallCanvas("tree",v);ents.push({y:y+0.2,draw:()=>{
+      c.fillStyle="rgba(10,30,10,.28)";c.fillRect(x*TS-5-camX,y*TS+11-camY,26,5);
+      const tx=x*TS+8-tc.width/2,ty=y*TS+17-tc.height;
+      // ผู้เล่นเดินอยู่หลังพุ่มใบ → ทำต้นไม้โปร่งแสง (ไม่บังตัวละคร)
+      const pcx=p.fx*TS+8,pcy=p.fy*TS+4,behind=pcy<y*TS&&pcx>tx+4&&pcx<tx+tc.width-4&&pcy>ty+4;
+      if(behind)c.globalAlpha=0.45;
+      c.drawImage(tc,tx-camX,ty-camY);c.globalAlpha=1}})}
+    else if(ch==="u")ents.push({y:y+0.2,draw:()=>{const sc=tallCanvas("sunflower",(x+y)%3);c.drawImage(sc,x*TS-camX,y*TS+16-28-camY+(Math.floor(now/900+x)%2?0:0))}});
     else if(ch==="l")ents.push({y:y+0.2,draw:()=>c.drawImage(tallCanvas("lamp",0),x*TS-camX,y*TS+16-32-camY)});
   }
   (X.m.labels||[]).forEach(l=>ents.push({y:l.y-0.6,draw:()=>{
@@ -338,13 +343,13 @@ function updateExHud_(){
 }
 function objective_(){
   const e=save.explore;
-  if(!e.talkedFlag)return "คุยกับครูแฟล็กที่ลานกลางหมู่บ้าน";
+  if(!e.talkedFlag)return "คุยกับครูแฟล็กที่ลานน้ำพุกลางหมู่บ้าน";
   for(const z of EXPLORE_MAPS.field.zones){
     if(e.open[z.gate])continue;
     const k=e.kills[z.stage];
     if(k<QUEST_KILLS)return `${ZONE_NAMES[z.id]}: ปราบ${MONSTERS[z.stage].name} ${k}/${QUEST_KILLS}`;
     return {gA:"ไขประตูหิน — หาเลขบนแผ่นหิน 3 แผ่นในทุ่งบวกแล้วบวกกัน",bridge:"ซ่อมสะพาน — คุยกับลุงช่างไม้ริมแม่น้ำ",
-            gC:e.key?"ใช้กุญแจเปิดประตูทางเหนือของทุ่งคูณ":"เปิดหีบรหัสในทุ่งคูณ (ถามลุงชาวสวน)",gD:"ไขประตูแบ่งเหรียญทางเหนือของทุ่งหาร",
+            gC:e.key?"ใช้กุญแจเปิดประตูทางตะวันออกของทุ่งคูณ":"เปิดหีบรหัสในทุ่งคูณ (ถามลุงชาวสวน)",gD:"ไขประตูแบ่งเหรียญทางตะวันออกของทุ่งหาร",
             gE:"ไขรหัสประตูลานบอส — ดูห้องหินโบราณในทุ่งผสม"}[z.gate];
   }
   if(!e.bossDone)return "ปราบราชาสไลม์ตัวเลขที่ลานบอส";
@@ -424,7 +429,7 @@ async function interact_(){
   if(t==="n")return exSay_([{sprite:"obj_carrot",name:"แครอท",text:"แครอทของลุงชาวสวน อย่าเพิ่งถอนนะ! แต่ลองนับดูว่ามีทั้งหมดกี่ต้น"}]);
   if(t==="c"){const ch=X.m.chests.find(c=>c.x===tx&&c.y===ty);if(ch)return openChest_(ch)}
   if(t==="C")return toast("หีบนี้เปิดไปแล้ว");
-  if(t==="G"||t==="b"){const gid=Object.keys(X.m.gates).find(g=>{const G=X.m.gates[g];return (G.rows||[G.y]).includes(ty)&&G.xs.includes(tx)});if(gid)return tryGate_(gid)}
+  if(t==="G"||t==="b"){const gid=gateAt_(tx,ty);if(gid)return tryGate_(gid)}
 }
 
 async function talkNpc_(npc){
@@ -433,7 +438,7 @@ async function talkNpc_(npc){
   if(npc.id==="flag"){
     if(!e.talkedFlag){
       await exSay_([
-        {mood:"explain",text:"มาแล้วเหรอ! ทุ่งหญ้าจำนวนทางเหนือของหมู่บ้านถูกมอนสเตอร์ตัวเลขยึดไปหมดแล้ว"},
+        {mood:"explain",text:"มาแล้วเหรอ! ทุ่งหญ้าจำนวนทางตะวันออกของหมู่บ้านถูกมอนสเตอร์ตัวเลขยึดไปหมดแล้ว"},
         {mood:"thinking",text:"ทุ่งแบ่งเป็น 5 ส่วนตามบทเรียน: ทุ่งบวก ทุ่งลบ ทุ่งคูณ ทุ่งหาร และทุ่งผสม แต่ละทุ่งมีประตูหรือสิ่งกีดขวางกั้นอยู่"},
         {mood:"remind",text:`ภารกิจของเธอ: ในแต่ละทุ่ง ปราบมอนสเตอร์ ${QUEST_KILLS} ตัว แล้วใช้คณิตศาสตร์ไขปริศนาเพื่อเปิดทางไปทุ่งถัดไป`},
         {mood:"determined",text:"ปลายทางคือราชาสไลม์ตัวเลข ปราบมันให้ได้นะ! นี่ยาฟื้นพลัง 1 ขวด ติดตัวไว้ 🧪"}
@@ -462,7 +467,7 @@ async function talkNpc_(npc){
     "เลเวลอัปแล้วได้แต้มทักษะ ลองกดปุ่ม ☰ ดูสิ"]))]);
   if(npc.id==="carpenter")return tryGate_("bridge");
   if(npc.id==="farmer")return exSay_([say(npc,e.chests.cC
-    ?"ขอบใจที่ช่วยเปิดหีบนะ กุญแจในนั้นใช้เปิดประตูทางเหนือได้"
+    ?"ขอบใจที่ช่วยเปิดหีบนะ กุญแจในนั้นใช้เปิดประตูทางตะวันออกได้"
     :"ลุงล็อกหีบสมบัติไว้แต่ดันลืมรหัส! จำได้แค่ว่ารหัสคือ 'จำนวนแครอททั้งหมดในแปลง' ช่วยลุงนับหน่อยนะ")]);
 }
 
@@ -485,7 +490,7 @@ async function tryGate_(gid){
     ok=true;await exSay_([{mood:"happy",text:"ใช้กุญแจทองเหลืองไขประตู... แกร๊ก! ประตูเปิดแล้ว"}]);
   }
   else if(gid==="gD")ok=await askNumber({title:"🔒 ประตูแห่งการหาร",text:`ประตูสลักไว้ว่า: "มีเหรียญทอง ${P.coins} เหรียญ แบ่งให้นักผจญภัย ${P.people} คนเท่า ๆ กัน จะได้คนละกี่เหรียญ?"`,answer:P.coins/P.people,hint:`${P.coins} ÷ ${P.people} = ? (ลองนึกว่า ${P.people} × อะไร = ${P.coins})`});
-  else if(gid==="gE")ok=await askNumber({title:"👑 ประตูลานบอส",text:"ประตูสลักไว้ว่า: \"รหัสคือพื้นที่ของห้องหินโบราณในทุ่งนี้ (กี่ตารางหน่วย)\"",answer:40,hint:"เข้าไปในห้องหินทางซ้าย นับแผ่นหินตามแนวกว้างและแนวยาว แล้วนำมาคูณกัน (กว้าง × ยาว)"});
+  else if(gid==="gE")ok=await askNumber({title:"👑 ประตูลานบอส",text:"ประตูสลักไว้ว่า: \"รหัสคือพื้นที่ของห้องหินโบราณในทุ่งนี้ (กี่ตารางหน่วย)\"",answer:40,hint:"เข้าไปในห้องหินโบราณ นับแผ่นหินตามแนวกว้างและแนวยาว แล้วนำมาคูณกัน (กว้าง × ยาว)"});
   if(!ok)return;
   e.open[gid]=true;persist();
   buildBase_();SFX.levelUp();updateExHud_();

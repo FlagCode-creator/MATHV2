@@ -262,8 +262,8 @@ const HERO_URL={};
 function heroImg(avatar,size,cls){
   const k=heroKey(avatar);
   if(typeof customSpriteURL==="function"&&customSpriteURL("hero:"+k))return spriteImg("hero:"+k,size,cls);
-  const url=HERO_URL[k]||(HERO_URL[k]=charFrame(k,"down",0).toDataURL());
-  return `<img class="sprite pixelated ${cls||""}" src="${url}" height="${size}" width="${Math.round(size*18/26)}" alt="">`;
+  const cv=charFrame(k,"down",0),url=HERO_URL[k]||(HERO_URL[k]=cv.toDataURL());
+  return `<img class="sprite pixelated ${cls||""}" src="${url}" height="${size}" width="${Math.round(size*cv.width/cv.height)}" alt="">`;
 }
 
 /* ---------------- NPC ในโหมดผจญภัย (ใช้โครงเดียวกับตัวละครผู้เล่น) ---------------- */

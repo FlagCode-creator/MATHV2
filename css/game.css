@@ -360,3 +360,15 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .ex-wrap.landscape .ex-stick-zone{width:42%;height:70%}
 .ex-wrap.landscape .ex-stick{width:min(132px,34vh);height:min(132px,34vh)}
 .ex-wrap.landscape .ex-knob{width:min(58px,15vh);height:min(58px,15vh);margin:calc(min(58px,15vh)/-2) 0 0 calc(min(58px,15vh)/-2)}
+/* หน้าต่างทุกอันไม่ล้นจอ (สำคัญเมื่อถือแนวนอน) */
+.modal-card{max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow-y:auto}
+@media (orientation:landscape) and (max-height:520px){
+  .modal{padding:10px}
+  .puzzle-card{max-width:760px;display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"head input" "text keys" "hint keys" "hint actions";gap:6px 18px;align-items:start}
+  .pz-head{grid-area:head}.pz-text{grid-area:text;margin:0}.pz-hint{grid-area:hint}.pz-input{grid-area:input;padding:8px}
+  .pz-keys{grid-area:keys;margin-top:0;gap:5px}.pz-keys button{padding:7px 0;font-size:1.05rem}
+  .pz-actions{grid-area:actions;margin-top:4px}
+  .pz-portrait img{width:56px;height:56px}
+  .dialog-img{width:72px;height:72px;margin-top:-30px}
+}
+@media (orientation:landscape) and (max-height:520px){.toast{top:10px;bottom:auto;transform:translate(-50%,-20px)}.toast.show{transform:translate(-50%,0)}}

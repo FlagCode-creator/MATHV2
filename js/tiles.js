@@ -4,10 +4,10 @@
 const TILE_PX=16;
 const HEXRGB={};
 const rgbOf=hex=>HEXRGB[hex]||(HEXRGB[hex]=hexToRgb_(hex));
-const G_={base:"#5ea83c",light:"#78c24e",dark:"#4a9234",deep:"#3b7d2e",tip:"#9ad866"};
-const P_={base:"#c89458",light:"#dcae74",dark:"#a87840",edge:"#9a6c38",pebD:"#7e6248",pebL:"#ecd0a0"};
+const G_={base:"#64aa3c",light:"#80c44c",dark:"#4f9432",deep:"#3d7a2a",tip:"#a8dc5c"};
+const P_={base:"#c89c66",light:"#dcb682",dark:"#ab8350",edge:"#8f6a3e",pebD:"#7e6248",pebL:"#ecd6a8"};
 const W_={deep:"#2d6fc0",mid:"#3a86d4",light:"#7cc3f0",foam:"#e4f7ff",shore:"#bfe6f8"};
-const PATHY=new Set([":","G","w","O","l","="]);
+const PATHY=new Set([":","G","w","O","l","=","p"]);
 const WATERY=new Set(["~","b","="]);
 const HOUSE=new Set(["R","H","W","D"]);
 
@@ -51,10 +51,25 @@ function paintGround_(buf,x,y,frame,T){
   };
   const planks=broken=>{
     water();
+    const vertical=WATERY.has(T(x,y-1))&&WATERY.has(T(x,y+1));      // สะพานข้ามลำธารที่ไหลจากบนลงล่าง
+    if(vertical){
+      if(broken){[[3,2,9],[10,5,8]].forEach(([i,j,h])=>{rect(i,j,3,h,"#b87a48");rect(i,j,1,h,"#d49a60");rect(i+3,j,1,h,"#6a4020")});rect(0,0,5,2,"#7a4a28");rect(11,14,5,2,"#7a4a28");return}
+      for(let i=0;i<16;i+=4){rect(i,2,3,12,"#b87a48");rect(i,2,1,12,"#d49a60");rect(i+3,2,1,12,"#6a4020");px(i+1,4,"#4a3020");px(i+1,11,"#4a3020")}
+      rect(0,0,16,2,"#7a4a28");rect(0,14,16,2,"#5a3420");rect(0,0,16,1,"#a0683a");
+      return;
+    }
     if(broken){[[2,3,7],[9,10,6]].forEach(([i,j,w])=>{rect(i,j,w,3,"#b87a48");rect(i,j,w,1,"#d49a60");rect(i,j+3,w,1,"#6a4020")});rect(0,0,2,5,"#7a4a28");rect(14,11,2,5,"#7a4a28");return}
     for(let j=0;j<16;j+=4){rect(2,j,12,3,"#b87a48");rect(2,j,12,1,"#d49a60");rect(2,j+3,12,1,"#6a4020");px(4,j+1,"#4a3020");px(11,j+1,"#4a3020")}
     rect(0,0,2,16,"#7a4a28");rect(14,0,2,16,"#5a3420");rect(0,0,1,16,"#a0683a");
   };
+  if(ch==="p"||(ch==="O"&&T(x-1,y)!==":"&&T(x+1,y)!==":")){   // ลานหินปูพื้น (รวมพื้นใต้น้ำพุบนลาน)
+    rect(0,0,16,16,"#8a8078");
+    for(let r=0;r<3;r++){const off=(y*3+r)%2?4:0,h=r<2?5:6;
+      for(let b=-1;b<3;b++){const sx=off+b*8,col=["#b8b0a4","#aca496","#c2baae"][Math.floor(hash2_(x*4+b,y*3+r,61)*3)];
+        for(let j=0;j<h-1;j++)for(let i=0;i<7;i++){const X_=sx+i;if(X_<0||X_>15)continue;px(X_,r*5+j,j===0?"#d4ccc0":j===h-2?"#948a7e":col)}}}
+    if(H(9)>0.8){px(3,7,"#64aa3c");px(4,7,"#80c44c")}
+    return;
+  }
   if(ch==="~")return water();
   if(ch==="=")return planks(false);
   if(ch==="b")return planks(true);
@@ -79,6 +94,10 @@ function paintGround_(buf,x,y,frame,T){
   if(PATHY.has(ch))return path();
   if(HOUSE.has(ch))return;                 // บ้านวาดทั้งหลังภายหลัง
   grass(ch===",");
+  if(ch==="v"){                            // หญ้าสูง
+    for(let k=0;k<4;k++){const i=2+Math.floor(H(k+100)*11),j=8+Math.floor(H(k+110)*6);
+      for(let b=0;b<3;b++){const hh=3+((k+b)%3);for(let q=0;q<hh;q++)px(i+b*2-(q>hh-2&&b===0?1:0)+(q>hh-2&&b===2?1:0),j-q,q>=hh-1?G_.tip:q>hh-3?G_.light:G_.deep)}}
+  }
 }
 
 /* ---------------- บ้านทั้งหลัง ---------------- */
@@ -94,10 +113,11 @@ function findHouses_(rows){
   return out;
 }
 const ROOF_STYLES=[
-  {base:"#c0413a",light:"#dd6a55",dark:"#8e2a2a",ridge:"#6e1f22"},
-  {base:"#3f6fb8",light:"#5f92d8",dark:"#2a4a86",ridge:"#1f3566"},
-  {base:"#b8742e",light:"#d8964a",dark:"#8a5220",ridge:"#6a3c18"},
-  {base:"#5a8a3a",light:"#7aaa52",dark:"#3e6a28",ridge:"#2e5020"}
+  {base:"#b8443c",light:"#d86a58",dark:"#86302c",ridge:"#5e1f22",wood:true},
+  {base:"#3c7a8a",light:"#58a0ae",dark:"#2a5664",ridge:"#1c3c46",wood:false},
+  {base:"#9a5a8a",light:"#bc7aac",dark:"#6e3c64",ridge:"#4c2644",wood:true},
+  {base:"#5a8a3a",light:"#7aaa52",dark:"#3e6a28",ridge:"#2e5020",wood:false},
+  {base:"#a8702e",light:"#c8904a",dark:"#7a5020",ridge:"#5a3a18",wood:true}
 ];
 function paintHouse_(buf,h,rows,idx){
   const S=ROOF_STYLES[idx%ROOF_STYLES.length];
@@ -106,8 +126,13 @@ function paintHouse_(buf,h,rows,idx){
   const RH=roofRows*16,wallY=Y0+RH,WH=(h.y1-h.y0+1-roofRows)*16;
   const set=(x,y,c)=>buf.set(x,y,c),rect=(x,y,w,hh,c)=>buf.rect(x,y,w,hh,c);
   // ผนัง
-  rect(X0,wallY,Wd,WH,"#efe0c0");
-  for(let j=0;j<WH;j++)for(let i=0;i<Wd;i++)if(hash2_(X0+i,wallY+j,41)<0.05)set(X0+i,wallY+j,"#e0cfaa");
+  if(S.wood){                              // ผนังไม้กระดาน
+    for(let j=0;j<WH;j++)for(let i=0;i<Wd;i++){const r=j%4;set(X0+i,wallY+j,r===3?"#7a4e2c":r===0?"#c89060":hash2_(X0+i,wallY+j,43)<0.06?"#9a6838":"#b07a48")}
+    for(let i=0;i<Wd;i+=12+Math.floor(hash2_(X0,i,47)*6))for(let j=0;j<WH;j+=4)set(X0+i,wallY+j+1,"#7a4e2c");
+  }else{
+    rect(X0,wallY,Wd,WH,"#efe0c0");
+    for(let j=0;j<WH;j++)for(let i=0;i<Wd;i++)if(hash2_(X0+i,wallY+j,41)<0.05)set(X0+i,wallY+j,"#e0cfaa");
+  }
   rect(X0,wallY,Wd,3,"#7a4a2a");rect(X0,wallY+3,Wd,1,"#5a3420");
   rect(X0,wallY,2,WH,"#7a4a2a");rect(X0+Wd-2,wallY,2,WH,"#5a3420");
   rect(X0,wallY+WH-3,Wd,3,"#9a8a78");rect(X0,wallY+WH-3,Wd,1,"#b8aa98");rect(X0,wallY+WH-1,Wd,1,"#6a5e52");
@@ -199,14 +224,41 @@ function canopyCanvas_(w,h,lumps,trunk,seed){
   ctx.putImageData(img,0,0);
   return cv;
 }
+function pineCanvas_(variant){
+  const w=32,h=60,cv=document.createElement("canvas");cv.width=w;cv.height=h;
+  const ctx=cv.getContext("2d"),img=ctx.createImageData(w,h),d=img.data;
+  const set=(x,y,hex)=>{if(x<0||y<0||x>=w||y>=h)return;const c=rgbOf(hex),i=(y*w+x)*4;d[i]=c[0];d[i+1]=c[1];d[i+2]=c[2];d[i+3]=255};
+  const tiers=[[4,14,6],[12,26,10],[22,40,14]],PAL=["#6aa850","#4f8e40","#3c7434","#2c5a2a"],OUT="#16341c";
+  const inside=(x,y)=>tiers.some(([t,b,hw])=>y>=t&&y<=b&&Math.abs(x-15.5)<=(y-t+2)/(b-t+2)*hw+0.5);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    if(y>=40&&y<52&&x>=13&&x<19){set(x,y,x===13?"#8a5a34":x>=17?"#4a2c18":"#6a4424");continue}
+    if(!inside(x,y))continue;
+    const edge=!inside(x-1,y)||!inside(x+1,y)||!inside(x,y-1)||!inside(x,y+1);
+    const t=(x-15.5)/12+(hash2_(x,y,variant+70)-0.5)*0.35;
+    set(x,y,edge?OUT:PAL[clamp(Math.floor((t+0.8)*2.2),0,3)]);
+  }
+  ctx.putImageData(img,0,0);return cv;
+}
 function tallCanvas(kind,variant){
   const id=kind+variant;if(TALL_CACHE[id])return TALL_CACHE[id];
   let cv;
   if(kind==="tree"){
-    const L=[[[16,15,10],[9,19,7],[23,19,7],[12,10,7],[20,9,7],[16,21,8]],
-             [[16,14,11],[8,20,7],[24,20,7],[16,8,7],[16,21,8]],
-             [[15,15,10],[10,11,7],[22,12,7],[9,20,7],[23,21,6],[16,21,8]]][variant%3];
-    cv=canopyCanvas_(32,40,L,[13,26,6,13],variant+5);
+    if(variant%3===2){cv=pineCanvas_(variant);}
+    else{
+      const L=variant%3===0
+        ?[[24,22,14],[13,27,10],[35,27,10],[17,13,10],[31,12,10],[24,9,9],[24,31,11]]
+        :[[24,21,15],[12,28,10],[36,28,10],[24,10,11],[16,17,9],[32,17,9],[24,32,11]];
+      cv=canopyCanvas_(48,64,L,[20,40,8,23],variant+5);
+    }
+  }else if(kind==="sunflower"){
+    cv=document.createElement("canvas");cv.width=16;cv.height=28;const c=cv.getContext("2d");
+    const r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};
+    r(7,10,2,17,"#3d7a2a");r(7,10,1,17,"#64aa3c");
+    r(3,15,4,2,"#4f9432");r(2,14,2,1,"#64aa3c");r(9,19,4,2,"#4f9432");r(12,18,2,1,"#64aa3c");
+    const cx=8,cy=6;
+    for(let j=-6;j<=6;j++)for(let i=-6;i<=6;i++){const d=Math.hypot(i,j);if(d>6.2)continue;
+      r(cx+i,cy+j,1,1,d<2.6?(hash2_(i,j,variant)<0.3?"#5a3420":"#7a4a28"):d<3.2?"#8a5a2a":d>5.4?"#d8961c":(Math.atan2(j,i)*3/Math.PI+8)%1<0.5?"#fed040":"#feae34")}
+    r(cx-6,cy,1,1,"#b87414");
   }else if(kind==="bush"){
     cv=canopyCanvas_(16,16,[[8,9,6],[4,10,4],[12,10,4],[8,6,4]],null,variant+9);
     const c=cv.getContext("2d");if(variant%2){[[5,8],[10,7],[8,11]].forEach(([x,y])=>{c.fillStyle="#e43b44";c.fillRect(x,y,1,1)})}
