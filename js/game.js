@@ -629,3 +629,4 @@ function resetProgress(){
 updateSfxBtn_();
 bindExploreControls_();
 renderTitle();
+loadCustomAssets().then(()=>{if(CUSTOM.loaded&&!save)renderTitle()});

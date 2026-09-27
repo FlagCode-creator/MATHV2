@@ -2,44 +2,46 @@
    แผนที่เขียนเป็นตัวอักษร 1 ตัว = 1 ช่อง (16×16 พิกเซล)
    .=หญ้า ,=หญ้ามีดอก :=ทางเดิน ~=น้ำ ==สะพาน b=สะพานพัง _=พื้นหิน #=กำแพงหิน
    T=ต้นไม้ o=ก้อนหิน f=รั้ว s=ป้าย k=แผ่นหินสลัก c=หีบ G=ประตูปริศนา n=แครอท w=บ่อน้ำ
-   R=หลังคา H=ผนังบ้าน W=หน้าต่าง D=ประตูบ้าน */
+   R=หลังคา H=ผนังบ้าน W=หน้าต่าง D=ประตูบ้าน q=พุ่มไม้ l=เสาไฟ x=ถังไม้ X=ลังไม้ O=น้ำพุ (2×2) */
 
-const TILE_BLOCK=new Set(["~","b","#","T","o","f","s","k","c","G","n","w","R","H","W","D"]);
+const TILE_BLOCK=new Set(["~","b","#","T","o","f","s","k","c","G","n","w","R","H","W","D","q","l","x","X","O"]);
 
 const EXPLORE_MAPS={
   village:{
     name:"หมู่บ้านเริ่มต้น",
     rows:[
-"TTTTTTTTT::TTTTTTTTT",
-"T,.......::.......,T",
-"T.RRRR...::...RRRR.T",
-"T.RRRR...::...RRRR.T",
-"T.HWDH...::...HDWH.T",
-"T...:....::....:...T",
-"T...::::::::::::...T",
-"T.......:w,:.......T",
-"T.......::::.......T",
-"T.RRRR..::::..RRRR.T",
-"T.RRRR...::...RRRR.T",
-"T.HDWH...::...HWDH.T",
-"T..:.....::.....:..T",
-"T..::::::::::::::..T",
-"T,,....,....,....,,T",
-"TTTTTTTTTTTTTTTTTTTT"],
-    spawn:{x:9,y:12},
-    // ป้ายชื่ออาคาร (วาดเป็นไอคอนเหนือประตู)
-    labels:[{x:4,y:4,icon:"🪙"},{x:15,y:4,icon:"🛏️"},{x:3,y:11,icon:"🏫"},{x:16,y:11,icon:"🏠"}],
-    warps:[{x:9,y:0,to:"field",tx:11,ty:67},{x:10,y:0,to:"field",tx:12,ty:67}],
+"TTTTTTTTTTTTTT::TTTTTTTTTTTTTT",
+"TT............::............TT",
+"TT.RRRRR..q...::...q.RRRRRR.TT",
+"TT.RRRRR....,.::.,...RRRRRR.TT",
+"TT.HWDWHxx....::....XHWWDWH.TT",
+"TT...:......l.::.l......:...TT",
+"TT.,.::::::::::::::::::::.,.TT",
+"TT.........::::::::....,....TT",
+"TTq.,.,..w.:::OO:::...,...q.TT",
+"TT.....,...:::OO:::.,.......TT",
+"TT.RRRRRR..::::::::..RRRRR..TT",
+"TT.RRRRRR..::::::::..RRRRR..TT",
+"TT.HWDWWH,..l.::.l.,.HWDWH,.TT",
+"TT...:........::.......:....TT",
+"TT...::::::::::::::::::::...TT",
+"TTfqffffffq...::...q......q.TT",
+"TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+"TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"],
+    spawn:{x:14,y:13},
+    // ป้ายชื่ออาคาร (วาดเป็นป้ายแขวนเหนือประตู)
+    labels:[{x:5,y:4,icon:"🪙"},{x:24,y:4,icon:"🛏️"},{x:5,y:12,icon:"🏫"},{x:23,y:12,icon:"🏠"}],
+    warps:[{x:14,y:0,to:"field",tx:11,ty:67},{x:15,y:0,to:"field",tx:12,ty:67}],
     npcs:[
-      {id:"flag",x:7,y:6,sprite:"npc_flag",name:"ครูแฟล็ก"},
-      {id:"shop",x:4,y:5,sprite:"npc_shop",name:"ป้าแม่ค้า"},
-      {id:"inn",x:16,y:5,sprite:"npc_inn",name:"เจ้าของโรงแรม"},
-      {id:"kid",x:13,y:13,sprite:"npc_kid",name:"น้องต้นกล้า"}
+      {id:"flag",x:12,y:9,sprite:"npc_flag",name:"ครูแฟล็ก",dir:"down"},
+      {id:"shop",x:6,y:5,sprite:"npc_shop",name:"ป้าแม่ค้า",dir:"down"},
+      {id:"inn",x:25,y:5,sprite:"npc_inn",name:"เจ้าของโรงแรม",dir:"down"},
+      {id:"kid",x:20,y:13,sprite:"npc_kid",name:"น้องต้นกล้า",dir:"left",wander:true}
     ],
     doors:[
-      {x:4,y:4,act:"shop"},{x:15,y:4,act:"inn"},
-      {x:3,y:11,text:"โรงเรียนของครูแฟล็ก — ประตูล็อกอยู่ ครูออกไปยืนที่ลานกลางหมู่บ้านแล้ว"},
-      {x:16,y:11,text:"บ้านของน้องต้นกล้า — มีกลิ่นขนมอบหอม ๆ ลอยออกมา"}
+      {x:5,y:4,act:"shop"},{x:24,y:4,act:"inn"},
+      {x:5,y:12,text:"โรงเรียนของครูแฟล็ก — ประตูล็อกอยู่ ครูออกไปยืนที่ลานน้ำพุกลางหมู่บ้านแล้ว"},
+      {x:23,y:12,text:"บ้านของน้องต้นกล้า — มีกลิ่นขนมอบหอม ๆ ลอยออกมา"}
     ],
     signs:[]
   },
@@ -116,7 +118,7 @@ const EXPLORE_MAPS={
 "T,.........::.........,T",
 "TTTTTTTTTTT::TTTTTTTTTTT"],
     spawn:{x:11,y:67},
-    warps:[{x:11,y:68,to:"village",tx:9,ty:1},{x:12,y:68,to:"village",tx:10,ty:1}],
+    warps:[{x:11,y:68,to:"village",tx:14,ty:1},{x:12,y:68,to:"village",tx:15,ty:1}],
     npcs:[
       {id:"carpenter",x:9,y:48,sprite:"npc_carpenter",name:"ลุงช่างไม้"},
       {id:"farmer",x:12,y:44,sprite:"npc_farmer",name:"ลุงชาวสวน"}
@@ -151,7 +153,7 @@ function newExploreState_(){
   const people=r(3,8),share=r(4,12);
   const planksNeed=r(25,60),planksHave=r(8,planksNeed-6);
   return {
-    map:"village",x:9,y:12,dir:"up",hp:null,
+    map:"village",x:14,y:13,dir:"up",hp:null,
     talkedFlag:false,reported:false,bossDone:false,key:false,
     kills:{A:0,B:0,C:0,D:0,E:0},
     open:{gA:false,bridge:false,gC:false,gD:false,gE:false},

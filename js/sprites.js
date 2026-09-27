@@ -240,32 +240,13 @@ function spriteRows_(key){
 const SPRITE_CANVAS={};
 function spriteCanvas(key){
   if(SPRITE_CANVAS[key])return SPRITE_CANVAS[key];
+  if(typeof customSprite==="function"){const img=customSprite(key);if(img)return img}   // ภาพ PNG ที่ครูใส่เอง (ถ้ามี)
   const rows=spriteRows_(key);if(!rows)return null;
-  const h=rows.length,w=Math.max(...rows.map(r=>r.length));
-  const at=(x,y)=>(y>=0&&y<h&&x>=0&&x<w&&rows[y][x]&&rows[y][x]!=="."&&PALETTE[rows[y][x]])?rows[y][x]:null;
-  const cv=document.createElement("canvas");cv.width=w+2;cv.height=h+2;
-  const ctx=cv.getContext("2d"),img=ctx.createImageData(w+2,h+2),d=img.data;
-  const put=(x,y,rgb)=>{const i=((y+1)*(w+2)+(x+1))*4;d[i]=rgb[0];d[i+1]=rgb[1];d[i+2]=rgb[2];d[i+3]=255};
-  const outline=hexToRgb_(OUTLINE),white=[255,255,255],black=[10,6,24];
-  for(let y=-1;y<=h;y++)for(let x=-1;x<=w;x++){
-    const ch=at(x,y);
-    if(ch){
-      let rgb=hexToRgb_(PALETTE[ch]);
-      if(ch!=="k"){
-        if(!at(x,y+1))rgb=mix_(rgb,black,0.32);          // ขอบล่าง = เงา
-        else if(!at(x,y-1))rgb=mix_(rgb,white,0.28);     // ขอบบน = แสง
-        else if(!at(x-1,y))rgb=mix_(rgb,white,0.1);
-        else if(!at(x+1,y))rgb=mix_(rgb,black,0.15);
-      }
-      put(x,y,rgb);
-    }else if(at(x-1,y)||at(x+1,y)||at(x,y-1)||at(x,y+1)){
-      put(x,y,outline);
-    }
-  }
-  ctx.putImageData(img,0,0);
-  return SPRITE_CANVAS[key]=cv;
+  const grid=rows.map(r=>[...r].map(ch=>ch!=="."&&PALETTE[ch]?PALETTE[ch]:null));
+  return SPRITE_CANVAS[key]=gridCanvas_(grid);
 }
 function spriteURL(key){
+  if(typeof customSpriteURL==="function"){const u=customSpriteURL(key);if(u)return u}
   if(SPRITE_CACHE[key])return SPRITE_CACHE[key];
   const cv=spriteCanvas(key);if(!cv)return "";
   return SPRITE_CACHE[key]=cv.toDataURL();
@@ -276,7 +257,14 @@ function spriteImg(key,size,cls){
 }
 // อวตารของผู้เล่น (รองรับเซฟเก่าที่เก็บเป็นอีโมจิ)
 function heroKey(avatar){return HERO_CLASSES[avatar]?avatar:"student_m"}
-function heroImg(avatar,size,cls){return spriteImg("hero:"+heroKey(avatar),size,cls)}
+const HERO_URL={};
+// อวตารใช้ตัวละครแบบใหม่ (หันหน้า) — สูงเท่า size กว้างตามสัดส่วน
+function heroImg(avatar,size,cls){
+  const k=heroKey(avatar);
+  if(typeof customSpriteURL==="function"&&customSpriteURL("hero:"+k))return spriteImg("hero:"+k,size,cls);
+  const url=HERO_URL[k]||(HERO_URL[k]=charFrame(k,"down",0).toDataURL());
+  return `<img class="sprite pixelated ${cls||""}" src="${url}" height="${size}" width="${Math.round(size*18/26)}" alt="">`;
+}
 
 /* ---------------- NPC ในโหมดผจญภัย (ใช้โครงเดียวกับตัวละครผู้เล่น) ---------------- */
 const NPC_CLASSES={

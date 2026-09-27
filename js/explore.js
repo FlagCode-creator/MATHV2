@@ -45,7 +45,7 @@ async function resumeExplore(){
   if(pend&&pend.defeated)X.mons=X.mons.filter(m=>m.id!==pend.defeated);
   showExplore_();
   if(pend&&pend.lost){
-    loadMap_("village",9,12,"up");resizeExplore_();updateExHud_();
+    const sp=EXPLORE_MAPS.village.spawn;loadMap_("village",sp.x,sp.y,"up");resizeExplore_();updateExHud_();
     await exSay_([{mood:"sad",text:"ไม่เป็นไรนะ ครูพาเธอกลับมาพักที่หมู่บ้านแล้ว HP เต็มแล้ว ลองอ่านวิธีคิดข้อที่พลาดแล้วค่อยไปสู้ใหม่"}]);
   }
   if(pend&&pend.kill){
@@ -69,11 +69,12 @@ function loadMap_(mapId,x,y,dir){
   X={
     mapId,m,W:m.rows[0].length,H:m.rows.length,
     p:{x,y,fx:x,fy:y,t:1,dir:e.dir,step:0},
-    npcs:(m.npcs||[]).map(n=>({...n,fx:n.x,fy:n.y})),
+    npcs:(m.npcs||[]).map(n=>({...n,fx:n.x,fy:n.y,ox:n.x,oy:n.y,t:1,step:0,next:performance.now()+rng(1500,3500)})),
     mons:[],held:old.held||null,running:old.running||false,last:old.last||0,
     canvas:$("ex-canvas"),frame:0,busy:false,invulnUntil:0,zone:null,pending:old.pending||null
   };
   X.ctx=X.canvas.getContext("2d");
+  if(blocked_(x,y)&&!(m.warps||[]).some(w=>w.x===x&&w.y===y)){X.p.x=X.p.fx=m.spawn.x;X.p.y=X.p.fy=m.spawn.y;e.x=m.spawn.x;e.y=m.spawn.y}
   if(m.zones)m.zones.forEach(z=>z.monsters.forEach(([mx,my],i)=>{
     X.mons.push({id:z.id+i,stage:z.stage,x:mx,y:my,fx:mx,fy:my,t:1,y0:z.y0,y1:z.y1,next:performance.now()+rng(600,2000)});
   }));
@@ -103,50 +104,24 @@ function bossAt_(x,y){const b=X.m.boss;return b&&!save.explore.bossDone&&b.x===x
 /* ====================================================================== */
 function hash2_(x,y,s){let h=(x*374761393+y*668265263+(s||0)*97531)|0;h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296}
 function buildBase_(){
+  const T=(x,y)=>tileAt_(x,y);
+  const houses=findHouses_(X.m.rows);
   X.base=[0,1].map(frame=>{
-    const cv=document.createElement("canvas");cv.width=X.W*TS;cv.height=X.H*TS;
-    const c=cv.getContext("2d");c.imageSmoothingEnabled=false;
-    for(let y=0;y<X.H;y++)for(let x=0;x<X.W;x++)paintTile_(c,x,y,frame);
+    const buf=new PixBuf(X.W*TS,X.H*TS);
+    for(let y=0;y<X.H;y++)for(let x=0;x<X.W;x++)paintGround_(buf,x,y,frame,T);
+    houses.forEach((h,i)=>paintHouse_(buf,h,X.m.rows,i+(X.mapId==="village"?0:2)));
+    paintFountains_(buf,X.m.rows,frame);
+    const cv=document.createElement("canvas");cv.width=buf.w;cv.height=buf.h;
+    const c=cv.getContext("2d");c.imageSmoothingEnabled=false;c.putImageData(buf.img,0,0);
+    for(let y=0;y<X.H;y++)for(let x=0;x<X.W;x++){
+      const ch=tileAt_(x,y);
+      if(ch==="q"){c.drawImage(tallCanvas("bush",Math.floor(hash2_(x,y,5)*2)),x*TS,y*TS);continue}
+      const obj=OBJ_OF[ch];if(obj){const o=spriteCanvas(obj);if(o)c.drawImage(o,x*TS-1,y*TS-1)}
+    }
     return cv;
   });
 }
-const OBJ_OF={T:"obj_tree",o:"obj_rock",f:"obj_fence",s:"obj_sign",k:"obj_tablet",c:"obj_chest",C:"obj_chest_open",G:"obj_gate",n:"obj_carrot",w:"obj_well"};
-function paintTile_(c,x,y,frame){
-  const ch=tileAt_(x,y),ox=x*TS,oy=y*TS,R=i=>hash2_(x,y,i);
-  const rect=(px,py,w,h,col)=>{c.fillStyle=col;c.fillRect(ox+px,oy+py,w,h)};
-  const grass=flowers=>{
-    rect(0,0,TS,TS,"#5cb84a");
-    for(let i=0;i<5;i++){const px=1+Math.floor(R(i)*12),py=2+Math.floor(R(i+9)*12);rect(px,py,1,1,"#43983a");rect(px+2,py,1,1,"#43983a");rect(px+1,py+1,1,1,"#43983a")}
-    for(let i=0;i<3;i++)rect(Math.floor(R(i+20)*15),Math.floor(R(i+30)*15),1,1,"#7ad55e");
-    if(flowers)for(let i=0;i<3;i++){const px=1+Math.floor(R(i+40)*13),py=1+Math.floor(R(i+50)*13);rect(px,py,2,2,["#fee761","#f6757a","#ffffff"][i]);rect(px,py+2,1,1,"#2f6e38")}
-  };
-  const path=()=>{rect(0,0,TS,TS,"#d9a066");for(let i=0;i<6;i++)rect(Math.floor(R(i)*15),Math.floor(R(i+7)*15),1+(i%2),1,i<4?"#c08552":"#e8bf88")};
-  const water=()=>{
-    rect(0,0,TS,TS,"#1f7fc0");
-    for(let i=0;i<3;i++){const py=(2+i*5+frame*2)%TS,px=Math.floor(R(i+60)*9);rect(px,py,5,1,"#5fc7ef");rect(px+2,py+1,3,1,"#1a6aa3")}
-    const up=y>0?X.m.rows[y-1][x]:"~";if(up!=="~"&&up!=="b")for(let i=0;i<TS;i+=2)rect(i+frame%2,0,1,1,"#bff0ff");
-  };
-  if(ch==="~"){water();return}
-  if(ch==="="){water();for(let py=0;py<TS;py+=4){rect(1,py,14,3,"#b86f50");rect(1,py+3,14,1,"#733e39")}rect(0,0,1,TS,"#5a3420");rect(15,0,1,TS,"#5a3420");return}
-  if(ch==="b"){water();rect(2,3,6,3,"#b86f50");rect(2,6,6,1,"#733e39");rect(9,10,5,3,"#b86f50");rect(9,13,5,1,"#733e39");return}
-  if(ch==="_"){rect(0,0,TS,TS,"#9aa6bd");rect(0,0,TS,1,"#c0cbdc");rect(0,0,1,TS,"#c0cbdc");rect(0,15,TS,1,"#6b7690");rect(15,0,1,TS,"#6b7690");if(R(1)>0.6)rect(4+Math.floor(R(2)*7),4+Math.floor(R(3)*7),2,1,"#8591a8");return}
-  if(ch==="#"){rect(0,0,TS,TS,"#5a6988");for(let py=0;py<TS;py+=4){rect(0,py,TS,1,"#3a4466");const off=(py/4)%2?4:0;for(let px=off;px<TS;px+=8)rect(px,py,1,4,"#3a4466")}rect(0,1,TS,1,"#7d8fb8");return}
-  if(ch==="R"){rect(0,0,TS,TS,"#c43a44");for(let py=0;py<TS;py+=4){rect(0,py+3,TS,1,"#8a2230");const off=(py/4)%2?0:4;for(let px=off;px<TS;px+=8)rect(px,py,4,1,"#e05560")}const up=y>0?X.m.rows[y-1][x]:".";if(up!=="R")rect(0,0,TS,2,"#6a1a26");return}
-  if(ch==="H"||ch==="W"||ch==="D"){
-    rect(0,0,TS,TS,"#ead4aa");rect(0,0,TS,2,"#8a2230");rect(0,14,TS,2,"#8a5a3a");
-    const l=x>0?X.m.rows[y][x-1]:".",r=x<X.W-1?X.m.rows[y][x+1]:".";
-    if(!"HWD".includes(l))rect(0,0,2,TS,"#b86f50");if(!"HWD".includes(r))rect(14,0,2,TS,"#b86f50");
-    if(ch==="W"){rect(4,4,8,8,"#733e39");rect(5,5,6,6,"#6cc3ec");rect(8,5,1,6,"#733e39");rect(5,8,6,1,"#733e39");rect(5,5,2,1,"#d6f3ff")}
-    if(ch==="D"){rect(3,3,10,13,"#5a3420");rect(4,4,8,12,"#8a5a3a");rect(10,10,1,1,"#fee761")}
-    return;
-  }
-  // พื้นใต้วัตถุ
-  if(ch==="n"){rect(0,0,TS,TS,"#7a4a30");for(let py=3;py<TS;py+=5)rect(0,py,TS,1,"#5a3420")}
-  else if(ch===":"||ch==="G"||ch==="w")path();
-  else grass(ch===",");
-  const obj=OBJ_OF[ch];
-  if(obj){const cv=spriteCanvas(obj);if(cv)c.drawImage(cv,ox-1,oy-1)}
-}
+const OBJ_OF={o:"obj_rock",f:"obj_fence",s:"obj_sign",k:"obj_tablet",c:"obj_chest",C:"obj_chest_open",G:"obj_gate",n:"obj_carrot",w:"obj_well",x:"obj_barrel",X:"obj_crate"};
 
 /* ====================================================================== */
 /* ลูปหลัก: อัปเดตการเดิน + วาด                                               */
@@ -158,6 +133,7 @@ function exLoop_(now){
   X.frame=Math.floor(now/600)%2;
   updatePlayer_(now,dt);
   updateMonsters_(now);
+  updateNpcs_(now);
   drawExplore_(now);
   requestAnimationFrame(exLoop_);
 }
@@ -202,6 +178,16 @@ function warpTo_(w){
 function showArea_(text){const el=$("ex-area");el.textContent=text;el.classList.remove("show");void el.offsetWidth;el.classList.add("show")}
 $("ex-area").addEventListener("animationend",ev=>ev.currentTarget.classList.remove("show"));
 
+function updateNpcs_(now){
+  X.npcs.forEach(n=>{
+    if(n.t<1){n.t=Math.min(1,(now-n.t0)/260);n.fx=n.sx+(n.x-n.sx)*n.t;n.fy=n.sy+(n.y-n.sy)*n.t;return}
+    if(!n.wander||X.busy||now<n.next)return;
+    n.next=now+rng(1800,4000);
+    const dir=pickOne(Object.keys(DIRS)),[dx,dy]=DIRS[dir],nx=n.x+dx,ny=n.y+dy;n.dir=dir;
+    if(Math.abs(nx-n.ox)>2||Math.abs(ny-n.oy)>1||blocked_(nx,ny)||npcAt_(nx,ny)||monAt_(nx,ny)||(nx===X.p.x&&ny===X.p.y))return;
+    n.sx=n.x;n.sy=n.y;n.x=nx;n.y=ny;n.t0=now;n.t=0;n.step++;
+  });
+}
 function updateMonsters_(now){
   X.mons.forEach(m=>{
     if(m.t<1){m.t=Math.min(1,(now-m.t0)/MON_STEP_MS);m.fx=m.sx+(m.x-m.sx)*m.t;m.fy=m.sy+(m.y-m.sy)*m.t;return}
@@ -216,46 +202,78 @@ function updateMonsters_(now){
 }
 
 function drawExplore_(now){
-  const c=X.ctx,cv=X.canvas,p=X.p;
-  c.imageSmoothingEnabled=false;
-  const vw=cv.width,vh=cv.height,mw=X.W*TS,mh=X.H*TS;
+  const c=X.ctx,cv=X.canvas,p=X.p,P=X.px||2;
+  c.setTransform(1,0,0,1,0,0);c.imageSmoothingEnabled=false;
+  c.fillStyle="#0b1026";c.fillRect(0,0,cv.width,cv.height);
+  c.setTransform(P,0,0,P,0,0);c.imageSmoothingEnabled=false;
+  const vw=cv.width/P,vh=cv.height/P,mw=X.W*TS,mh=X.H*TS;
+  const topPad=Math.round((X.hudPad||64)/(X.cssScale||2));
   let camX=Math.round(p.fx*TS+TS/2-vw/2),camY=Math.round(p.fy*TS+TS/2-vh/2);
   camX=mw<=vw?Math.round((mw-vw)/2):clamp(camX,0,mw-vw);
-  const topPad=Math.round(96/(X.scale||2));                // เผื่อพื้นที่ใต้ HUD ด้านบน ให้เห็นแถวบนสุดของแผนที่
   camY=mh+topPad<=vh?Math.round((mh-vh)/2)-topPad:clamp(camY,-topPad,mh-vh);
-  c.fillStyle="#0b1026";c.fillRect(0,0,vw,vh);
   c.drawImage(X.base[X.frame],-camX,-camY);
   const ents=[];
-  (X.m.labels||[]).forEach(l=>ents.push({y:l.y-0.5,draw:()=>{c.font="9px sans-serif";c.textAlign="center";c.fillText(l.icon,l.x*TS+8-camX,l.y*TS-2-camY)}}));
-  X.npcs.forEach(n=>ents.push({y:n.fy,draw:()=>drawSprite_(c,n.sprite,n.fx,n.fy,camX,camY,Math.floor(now/500+n.x)%2,false)}));
+  // ต้นไม้ / เสาไฟ (วัตถุสูง) เฉพาะที่อยู่ในจอ
+  const tx0=Math.max(0,Math.floor(camX/TS)-1),tx1=Math.min(X.W-1,Math.ceil((camX+vw)/TS)+1);
+  const ty0=Math.max(0,Math.floor(camY/TS)-1),ty1=Math.min(X.H-1,Math.ceil((camY+vh)/TS)+2);
+  for(let y=ty0;y<=ty1;y++)for(let x=tx0;x<=tx1;x++){
+    const ch=X.m.rows[y][x];
+    if(ch==="T"){const v=Math.floor(hash2_(x,y,7)*3);ents.push({y:y+0.2,draw:()=>{
+      c.fillStyle="rgba(10,30,10,.28)";c.fillRect(x*TS-3-camX,y*TS+12-camY,22,4);
+      c.drawImage(tallCanvas("tree",v),x*TS+8-16-camX,y*TS+17-40-camY)}})}
+    else if(ch==="l")ents.push({y:y+0.2,draw:()=>c.drawImage(tallCanvas("lamp",0),x*TS-camX,y*TS+16-32-camY)});
+  }
+  (X.m.labels||[]).forEach(l=>ents.push({y:l.y-0.6,draw:()=>{
+    const bx=l.x*TS+1-camX,by=l.y*TS-9-camY;
+    c.fillStyle="#4a2c18";c.fillRect(bx,by,14,10);c.fillStyle="#b87a48";c.fillRect(bx+1,by+1,12,8);c.fillStyle="#d49a60";c.fillRect(bx+1,by+1,12,1);
+    c.font="7px sans-serif";c.textAlign="center";c.textBaseline="middle";c.fillText(l.icon,bx+7,by+5.5)}}));
+  X.npcs.forEach(n=>ents.push({y:n.fy,draw:()=>drawChar_(c,n.sprite,n.dir||"down",n.t<1?(n.step%2?1:2):0,n.fx,n.fy,camX,camY)}));
   X.mons.forEach(m=>ents.push({y:m.fy,draw:()=>drawSprite_(c,MONSTERS[m.stage].sprite,m.fx,m.fy,camX,camY,Math.floor(now/350+m.x)%2,m.flip)}));
   const b=X.m.boss;
   if(b&&!save.explore.bossDone)ents.push({y:b.y,draw:()=>{const cv2=spriteCanvas(b.sprite);c.drawImage(cv2,Math.round(b.x*TS+8-cv2.width/2-camX),Math.round(b.y*TS+TS-cv2.height-camY+(Math.floor(now/400)%2)))}});
-  const moving=p.t<1,bob=moving?(p.step%2):0;
-  ents.push({y:p.fy,draw:()=>drawSprite_(c,"hero:"+heroKey(save.avatar),p.fx,p.fy,camX,camY,bob,p.dir==="left")});
+  const moving=p.t<1;
+  ents.push({y:p.fy,draw:()=>drawChar_(c,"hero:"+heroKey(save.avatar),p.dir,moving?(p.step%2?1:2):0,p.fx,p.fy,camX,camY)});
   ents.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());
-  // ป้าย "!" เหนือ NPC ที่มีเรื่องสำคัญ
+  // ป้าย "!" เหนือครูแฟล็กเมื่อมีเรื่องสำคัญ
   const f=X.npcs.find(n=>n.id==="flag");
   if(f&&(!save.explore.talkedFlag||(save.explore.bossDone&&!save.explore.reported))){
-    c.fillStyle="#fee761";c.font="bold 10px sans-serif";c.textAlign="center";
-    c.fillText("!",f.x*TS+8-camX,f.y*TS-3-camY-(Math.floor(now/300)%2));
+    const bx=f.x*TS+5-camX,by=f.y*TS-18-camY-(Math.floor(now/300)%2);
+    c.fillStyle="#181425";c.fillRect(bx-1,by-1,8,11);c.fillStyle="#fee761";c.fillRect(bx,by,6,9);c.fillStyle="#181425";c.fillRect(bx+2,by+1,2,4);c.fillRect(bx+2,by+6,2,2);
   }
+}
+// ตัวละคร 16×24: เท้าอยู่ที่ขอบล่างของช่อง
+function drawChar_(c,spriteKey,dir,frame,fx,fy,camX,camY){
+  const key=charKeyFor(spriteKey);
+  if(!key){drawSprite_(c,spriteKey,fx,fy,camX,camY,0,false);return}
+  const cv=charFrame(key,dir,frame);
+  const w=TS+2,h=Math.round(w*cv.height/cv.width);
+  const dx=Math.round(fx*TS-1-camX),dy=Math.round(fy*TS+TS+1-h-camY);
+  c.fillStyle="rgba(0,0,0,.28)";c.fillRect(dx+4,Math.round(fy*TS-camY)+14,10,3);c.fillRect(dx+3,Math.round(fy*TS-camY)+15,12,1);
+  c.drawImage(cv,dx,dy,w,h);
 }
 function drawSprite_(c,key,fx,fy,camX,camY,bob,flip){
   const cv=spriteCanvas(key);if(!cv)return;
-  const dx=Math.round(fx*TS-1-camX),dy=Math.round(fy*TS-1-camY-bob);
+  const w=TS+2,h=Math.round(w*cv.height/cv.width);
+  const dx=Math.round(fx*TS-1-camX),dy=Math.round(fy*TS+TS+1-h-camY-bob);
   c.fillStyle="rgba(0,0,0,.25)";c.fillRect(dx+4,Math.round(fy*TS-camY)+13,10,3);
-  if(flip){c.save();c.translate(dx+cv.width,dy);c.scale(-1,1);c.drawImage(cv,0,0);c.restore()}
-  else c.drawImage(cv,dx,dy);
+  if(flip){c.save();c.translate(dx+w,dy);c.scale(-1,1);c.drawImage(cv,0,0,w,h);c.restore()}
+  else c.drawImage(cv,dx,dy,w,h);
 }
+// ขนาดแคนวาสตามความละเอียดจริงของจอ (คมชัด) · แนวนอนเห็นประมาณ 10–11 ช่องตามแนวตั้ง
 function resizeExplore_(){
   if(!X)return;
-  const wrap=$("ex-wrap"),w=wrap.clientWidth||360,h=wrap.clientHeight||640;
-  const scale=clamp(Math.round(w/176*2)/2,2,4);           // ประมาณ 11 ช่องตามแนวกว้าง
-  X.scale=scale;
-  X.canvas.width=Math.ceil(w/scale);X.canvas.height=Math.ceil(h/scale);
+  const wrap=$("ex-wrap"),landscape=window.innerWidth>window.innerHeight;
+  wrap.classList.toggle("landscape",landscape);                     // ตั้งคลาสก่อนวัดขนาด (แนวนอนใช้เต็มความกว้างจอ)
+  const w=wrap.clientWidth||360,h=wrap.clientHeight||640,dpr=window.devicePixelRatio||1;
+  const cssScale=landscape?clamp(h/(TS*12),1.5,5):clamp(w/(TS*11),2,5);
+  X.cssScale=cssScale;X.hudPad=landscape?8:72;
+  X.px=Math.max(1,Math.round(cssScale*dpr));
+  X.canvas.width=Math.round(w*dpr);X.canvas.height=Math.round(h*dpr);
   X.canvas.style.width=w+"px";X.canvas.style.height=h+"px";
+  const hint=$("ex-rotate");if(hint)hint.classList.toggle("hidden",landscape||exRotateDismissed);
 }
+let exRotateDismissed=false;
+function dismissRotateHint(){exRotateDismissed=true;$("ex-rotate").classList.add("hidden")}
 window.addEventListener("resize",()=>{if(X&&X.running)resizeExplore_()});
 
 /* ====================================================================== */
@@ -388,6 +406,7 @@ async function interact_(){
 
 async function talkNpc_(npc){
   const e=save.explore;SFX.click();
+  const opp={up:"down",down:"up",left:"right",right:"left"};if(npc)npc.dir=opp[X.p.dir]||"down";
   if(npc.id==="flag"){
     if(!e.talkedFlag){
       await exSay_([
@@ -498,7 +517,7 @@ function exploreBattleEnded(won,hpLeft){
     if(pend.boss){e.bossDone=true;X.pending={boss:true}}
     else if(pend.monster){e.kills[pend.stage]=(e.kills[pend.stage]||0)+1;X.pending={defeated:pend.monster,kill:pend.stage}}
   }else{
-    e.hp=effMaxHp();e.map="village";e.x=9;e.y=12;
+    const sp=EXPLORE_MAPS.village.spawn;e.hp=effMaxHp();e.map="village";e.x=sp.x;e.y=sp.y;
     X.pending={lost:true};
   }
   persist();
