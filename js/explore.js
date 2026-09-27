@@ -280,12 +280,7 @@ window.addEventListener("resize",()=>{if(X&&X.running)resizeExplore_()});
 /* ควบคุม                                                                   */
 /* ====================================================================== */
 function bindExploreControls_(){
-  document.querySelectorAll(".ex-pad button").forEach(b=>{
-    const dir=b.dataset.dir;
-    const on=ev=>{ev.preventDefault();if(X)X.held=dir;b.classList.add("held")};
-    const off=ev=>{ev.preventDefault();if(X&&X.held===dir)X.held=null;b.classList.remove("held")};
-    b.addEventListener("pointerdown",on);b.addEventListener("pointerup",off);b.addEventListener("pointerleave",off);b.addEventListener("pointercancel",off);
-  });
+  bindJoystick_();
   $("ex-a").addEventListener("pointerdown",ev=>{ev.preventDefault();interact_()});
   const keyDir={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right",w:"up",s:"down",a:"left",d:"right",W:"up",S:"down",A:"left",D:"right"};
   document.addEventListener("keydown",ev=>{
@@ -296,6 +291,34 @@ function bindExploreControls_(){
     else if(ev.key===" "||ev.key==="Enter"||ev.key==="z"||ev.key==="Z"){ev.preventDefault();interact_()}
   });
   document.addEventListener("keyup",ev=>{if(X&&keyDir[ev.key]===X.held)X.held=null});
+}
+
+// จอยสติ๊ก (ลูกกลิ้ง): แตะตรงไหนในโซนซ้ายล่างก็ได้ จอยจะย้ายไปอยู่ใต้นิ้ว แล้วลากไปทางที่ต้องการเดิน
+// ยังเดินทีละช่อง (เลือกทิศตามแกนที่ลากมากกว่า) เพื่อให้ปริศนาและการชนมอนสเตอร์ทำงานเหมือนเดิม
+function bindJoystick_(){
+  const zone=$("ex-stick-zone"),base=$("ex-stick"),knob=$("ex-knob");
+  let id=null,cx=0,cy=0;
+  const radius=()=>base.offsetWidth/2;
+  const reset=()=>{id=null;base.classList.remove("active","floating");base.style.left=base.style.top="";knob.style.transform="";if(X)X.held=null};
+  zone.addEventListener("pointerdown",ev=>{
+    ev.preventDefault();if(id!==null)return;
+    id=ev.pointerId;zone.setPointerCapture(id);
+    const zr=zone.getBoundingClientRect(),r=radius();
+    // ย้ายฐานจอยมาอยู่ใต้นิ้ว (ไม่ให้ล้นขอบโซน)
+    const lx=clamp(ev.clientX-zr.left,r,zr.width-r),ly=clamp(ev.clientY-zr.top,r,zr.height-r);
+    base.classList.add("active","floating");base.style.left=(lx-r)+"px";base.style.top=(ly-r)+"px";
+    cx=zr.left+lx;cy=zr.top+ly;move(ev);
+  });
+  const move=ev=>{
+    if(ev.pointerId!==id)return;
+    const r=radius(),dx=ev.clientX-cx,dy=ev.clientY-cy,dist=Math.hypot(dx,dy),k=dist>r?r/dist:1;
+    knob.style.transform=`translate(${dx*k}px,${dy*k}px)`;
+    if(!X)return;
+    if(dist<r*0.28){X.held=null;return}
+    X.held=Math.abs(dx)>Math.abs(dy)?(dx>0?"right":"left"):(dy>0?"down":"up");
+  };
+  zone.addEventListener("pointermove",move);
+  ["pointerup","pointercancel","lostpointercapture"].forEach(t=>zone.addEventListener(t,ev=>{if(ev.pointerId===id)reset()}));
 }
 
 /* ====================================================================== */

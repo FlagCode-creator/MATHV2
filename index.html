@@ -14,7 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
 <!-- ?v= คือเลขเวอร์ชันไฟล์: service worker ของเว็บหลักแคชไฟล์ .css/.js แบบ cache-first
      แก้ไฟล์ไหนแล้วให้เพิ่มเลข ?v= ของไฟล์นั้น ผู้เล่นจะได้โหลดไฟล์ใหม่ทันที -->
-<link rel="stylesheet" href="css/game.css?v=6">
+<link rel="stylesheet" href="css/game.css?v=8">
 </head>
 <body>
 <div id="app">
@@ -233,11 +233,8 @@
    </div>
    <div id="ex-quest" class="ex-quest"></div>
    <div id="ex-area" class="ex-area"></div>
-   <div class="ex-pad">
-    <button type="button" data-dir="up" class="up" aria-label="ขึ้น">▲</button>
-    <button type="button" data-dir="left" class="left" aria-label="ซ้าย">◀</button>
-    <button type="button" data-dir="right" class="right" aria-label="ขวา">▶</button>
-    <button type="button" data-dir="down" class="down" aria-label="ลง">▼</button>
+   <div id="ex-stick-zone" class="ex-stick-zone" aria-label="จอยสติ๊กสำหรับเดิน">
+    <div id="ex-stick" class="ex-stick"><div id="ex-knob" class="ex-knob"></div></div>
    </div>
    <button id="ex-a" type="button" class="ex-a" aria-label="คุย/ตรวจสอบ">A</button>
    <div id="ex-rotate" class="ex-rotate hidden"><span>📱↻ หมุนจอเป็นแนวนอน จะเห็นแผนที่กว้างขึ้น</span><button type="button" onclick="dismissRotateHint()">×</button></div>
@@ -296,7 +293,7 @@
 <script src="js/custom-assets.js?v=1"></script>
 <script src="js/skills.js?v=1"></script>
 <script src="js/explore-data.js?v=2"></script>
-<script src="js/explore.js?v=4"></script>
+<script src="js/explore.js?v=5"></script>
 <script src="js/data.js?v=2"></script>
 <script src="js/save.js?v=2"></script>
 <script src="js/audio.js?v=1"></script>
