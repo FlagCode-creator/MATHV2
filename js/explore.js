@@ -71,7 +71,8 @@ function loadMap_(mapId,x,y,dir){
     p:{x,y,fx:x,fy:y,t:1,dir:e.dir,step:0},
     npcs:(m.npcs||[]).map(n=>({...n,fx:n.x,fy:n.y,ox:n.x,oy:n.y,t:1,step:0,next:performance.now()+rng(1500,3500)})),
     mons:[],held:old.held||null,running:old.running||false,last:old.last||0,
-    canvas:$("ex-canvas"),frame:0,busy:false,invulnUntil:0,zone:null,pending:old.pending||null
+    canvas:$("ex-canvas"),frame:0,busy:false,invulnUntil:0,zone:null,pending:old.pending||null,
+    px:old.px,cssScale:old.cssScale,hudPad:old.hudPad,scale:old.scale
   };
   X.ctx=X.canvas.getContext("2d");
   if(blocked_(x,y)&&!(m.warps||[]).some(w=>w.x===x&&w.y===y)){X.p.x=X.p.fx=m.spawn.x;X.p.y=X.p.fy=m.spawn.y;e.x=m.spawn.x;e.y=m.spawn.y}

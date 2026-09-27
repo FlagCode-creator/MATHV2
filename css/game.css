@@ -372,3 +372,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
   .dialog-img{width:72px;height:72px;margin-top:-30px}
 }
 @media (orientation:landscape) and (max-height:520px){.toast{top:10px;bottom:auto;transform:translate(-50%,-20px)}.toast.show{transform:translate(-50%,0)}}
+
+/* ภาพ PNG ของครู: ภาพใหญ่ที่ถูกย่อให้ย่อแบบนุ่ม */
+img.smooth,.smooth{image-rendering:auto}
+.dialog-img{object-fit:contain}

@@ -1,28 +1,79 @@
 /* Math Quest V2 — ใช้ภาพ PNG ของครูเองแทนภาพที่วาดด้วยโค้ด
-   วางไฟล์ภาพใน assets/custom/ แล้วสร้าง assets/custom/manifest.json (ดูตัวอย่างใน assets/custom/README.md)
-   ถ้าไม่มี manifest เกมจะใช้ภาพที่วาดด้วยโค้ดตามปกติ */
+   วางไฟล์ภาพใน assets/custom/ แล้วเขียนรายชื่อใน assets/custom/manifest.json (ดูวิธีใน assets/custom/README.md)
+   ถ้าไม่มี manifest เกมจะใช้ภาพที่วาดด้วยโค้ดตามปกติ
 
-const CUSTOM={sprites:{},chars:{},loaded:false};
+   ประเภทภาพใน manifest:
+   - portraits  : ภาพใหญ่ของตัวละคร/NPC (ท่าเดียว) → ฉากต่อสู้ บทสนทนา หน้าตัวละคร
+   - sprites    : ภาพใหญ่ของมอนสเตอร์/บอส/วัตถุ → ฉากต่อสู้และหน้าจอต่าง ๆ (บนแผนที่ยังใช้ตัวเล็กที่วาดด้วยโค้ด)
+   - mapSprites : ภาพเล็กสำหรับบนแผนที่ (ไม่บังคับ)
+   - characters : sprite sheet เดิน 4 ทิศ แบบ RPG Maker (ไม่บังคับ)
+   ภาพที่มีพื้นหลังสีเรียบจะถูกตัดพื้นหลังและขอบว่างออกให้อัตโนมัติ */
+
+const CUSTOM={portraits:{},sprites:{},mapSprites:{},chars:{},loaded:false};
 function loadImage_(src){return new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>res(null);i.src=src})}
+
+// ตัดพื้นหลังสีเรียบ (ไล่จากขอบภาพ) + ตัดขอบโปร่งใสรอบตัวละคร
+function cleanImage_(img){
+  const w=img.naturalWidth,h=img.naturalHeight,cv=document.createElement("canvas");cv.width=w;cv.height=h;
+  const ctx=cv.getContext("2d");ctx.drawImage(img,0,0);
+  let data;try{data=ctx.getImageData(0,0,w,h)}catch(e){return {canvas:cv,url:img.src,w,h}}
+  const d=data.data,idx=(x,y)=>(y*w+x)*4;
+  const corners=[[0,0],[w-1,0],[0,h-1],[w-1,h-1]].map(([x,y])=>idx(x,y));
+  const opaque=corners.every(i=>d[i+3]>250);
+  const near=(i,j,t)=>Math.abs(d[i]-d[j])+Math.abs(d[i+1]-d[j+1])+Math.abs(d[i+2]-d[j+2])<=t;
+  if(opaque&&corners.every(i=>near(i,corners[0],60))){
+    const ref=corners[0],seen=new Uint8Array(w*h),stack=[];
+    for(let x=0;x<w;x++){stack.push(x,0,x,h-1)}for(let y=0;y<h;y++){stack.push(0,y,w-1,y)}
+    while(stack.length){
+      const y=stack.pop(),x=stack.pop(),k=y*w+x;
+      if(x<0||y<0||x>=w||y>=h||seen[k])continue;seen[k]=1;
+      const i=k*4;if(!near(i,ref,48))continue;
+      d[i+3]=0;stack.push(x+1,y,x-1,y,x,y+1,x,y-1);
+    }
+  }
+  let x0=w,y0=h,x1=-1,y1=-1;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[idx(x,y)+3]>10){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+  if(x1<0)return {canvas:cv,url:cv.toDataURL(),w,h};
+  ctx.putImageData(data,0,0);
+  const out=document.createElement("canvas");out.width=x1-x0+1;out.height=y1-y0+1;
+  out.getContext("2d").drawImage(cv,x0,y0,out.width,out.height,0,0,out.width,out.height);
+  return {canvas:out,url:out.toDataURL(),w:out.width,h:out.height};
+}
+
 async function loadCustomAssets(){
   try{
     const r=await fetch("assets/custom/manifest.json",{cache:"no-cache"});
     if(!r.ok)return;
     const m=await r.json(),base="assets/custom/";
-    await Promise.all(Object.entries(m.sprites||{}).map(async([key,src])=>{const img=await loadImage_(base+src);if(img)CUSTOM.sprites[key]={img,url:base+src}}));
+    const loadGroup=async(group,target)=>Promise.all(Object.entries(m[group]||{}).map(async([key,src])=>{
+      const img=await loadImage_(base+src);if(img)target[key]=cleanImage_(img);
+    }));
+    await loadGroup("portraits",CUSTOM.portraits);
+    await loadGroup("sprites",CUSTOM.sprites);
+    await loadGroup("mapSprites",CUSTOM.mapSprites);
     await Promise.all(Object.entries(m.characters||{}).map(async([key,def])=>{
       const d=typeof def==="string"?{src:def}:def,img=await loadImage_(base+d.src);
       if(img)CUSTOM.chars[key]={img,cols:d.cols||3,rows:d.rows||4,order:d.order||["down","left","right","up"]};
     }));
     CUSTOM.loaded=true;
     // ล้างแคชภาพที่วาดไว้ก่อนหน้า ให้ใช้ภาพใหม่
-    Object.keys(CUSTOM.sprites).forEach(k=>{delete SPRITE_CANVAS[k];delete SPRITE_CACHE[k]});
+    Object.keys(CUSTOM.sprites).concat(Object.keys(CUSTOM.mapSprites)).forEach(k=>{delete SPRITE_CANVAS[k];delete SPRITE_CACHE[k]});
     Object.keys(CHAR_CACHE).forEach(k=>{if(CUSTOM.chars[k.split("|")[0]])delete CHAR_CACHE[k]});
   }catch(e){}
 }
-function customSprite(key){const c=CUSTOM.sprites[key];return c?c.img:null}
+// บนแผนที่ (canvas)
+function customSprite(key){const c=CUSTOM.mapSprites[key];return c?c.canvas:null}
+// ในหน้าจอ HTML
 function customSpriteURL(key){const c=CUSTOM.sprites[key];return c?c.url:null}
-// ตัดเฟรมจาก sprite sheet แบบ RPG Maker: 3 คอลัมน์ (ก้าว-ยืน-ก้าว) × 4 แถว (ล่าง ซ้าย ขวา บน)
+function customSpriteInfo(key){return CUSTOM.sprites[key]||null}
+// ภาพใหญ่ของตัวละคร: key = ชื่ออาชีพ (student_m) หรือ NPC (npc_flag)
+function portraitInfo(key){if(!key)return null;if(key.indexOf("hero:")===0)key=key.slice(5);return CUSTOM.portraits[key]||null}
+// ภาพ <img> ที่พอดีกรอบ size×size โดยคงสัดส่วน · ภาพใหญ่ที่ถูกย่อใช้การย่อแบบนุ่ม ภาพเล็กที่ถูกขยายใช้แบบพิกเซลคม
+function fitImg_(info,size,cls){
+  const s=Math.min(size/info.w,size/info.h),w=Math.round(info.w*s),h=Math.round(info.h*s);
+  return `<img class="sprite ${s<1?"smooth":"pixelated"} ${cls||""}" src="${info.url}" width="${w}" height="${h}" alt="">`;
+}
+// sprite sheet เดิน 4 ทิศ: 3 คอลัมน์ (ก้าว-ยืน-ก้าว) × 4 แถว (ล่าง ซ้าย ขวา บน)
 function customCharFrame(key,dir,frame){
   const c=CUSTOM.chars[key];if(!c)return null;
   const fw=Math.floor(c.img.width/c.cols),fh=Math.floor(c.img.height/c.rows);

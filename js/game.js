@@ -34,7 +34,9 @@ function playDialog(lines){
 }
 function showDialogLine_(){
   const l=dialogQueue.shift();
-  $("dialog-img").src=l.sprite?spriteURL(l.sprite):mascotSrc(l.mood);
+  const big=l.sprite&&(portraitInfo(l.sprite)||customSpriteInfo(l.sprite)),img=$("dialog-img");
+  img.src=big?big.url:l.sprite?spriteURL(l.sprite):mascotSrc(l.mood);
+  img.classList.toggle("smooth",!!big&&big.w>96);
   $("dialog-name").textContent=l.name||"ครูแฟล็ก";
   $("dialog-line").textContent=l.text;
 }
@@ -224,7 +226,7 @@ async function startBattle(kind,ref,opts){
   $("enemy-stage").style.backgroundImage=`url(${bgURL(wi)})`;
   $("battle-flee").textContent=B.origin==="explore"?"🏃 ถอย":"🏃 หนี";
   $("battle-label").textContent=B.origin==="explore"&&kind==="stage"?`🧭 ${TOPICS[ref]}`:kind==="stage"?`${WORLDS[wi].icon} STAGE ${ref} · ${TOPICS[ref]}`:`${WORLDS[wi].icon} BOSS · ${WORLDS[wi].name}`;
-  $("player-avatar").innerHTML=heroImg(save.avatar,52);
+  $("player-avatar").innerHTML=heroImg(save.avatar,portraitInfo(save.avatar)?72:52);
   $("player-name").textContent=`${save.name} Lv.${lvl}`;
   $("enemy-sprite").className="enemy-sprite";
   renderEnemySprite_();

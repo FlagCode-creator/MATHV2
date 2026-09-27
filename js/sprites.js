@@ -252,6 +252,7 @@ function spriteURL(key){
   return SPRITE_CACHE[key]=cv.toDataURL();
 }
 function spriteImg(key,size,cls){
+  if(typeof portraitInfo==="function"){const info=portraitInfo(key)||customSpriteInfo(key);if(info)return fitImg_(info,size,cls)}   // ภาพ PNG ของครู
   const url=spriteURL(key);
   return url?`<img class="sprite pixelated ${cls||""}" src="${url}" width="${size}" height="${size}" alt="">`:"";
 }
@@ -261,7 +262,7 @@ const HERO_URL={};
 // อวตารใช้ตัวละครแบบใหม่ (หันหน้า) — สูงเท่า size กว้างตามสัดส่วน
 function heroImg(avatar,size,cls){
   const k=heroKey(avatar);
-  if(typeof customSpriteURL==="function"&&customSpriteURL("hero:"+k))return spriteImg("hero:"+k,size,cls);
+  if(typeof portraitInfo==="function"){const info=portraitInfo(k)||customSpriteInfo("hero:"+k);if(info)return fitImg_(info,size,cls)}
   const cv=charFrame(k,"down",0),url=HERO_URL[k]||(HERO_URL[k]=cv.toDataURL());
   return `<img class="sprite pixelated ${cls||""}" src="${url}" height="${size}" width="${Math.round(size*cv.width/cv.height)}" alt="">`;
 }
