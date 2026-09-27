@@ -11,6 +11,8 @@ let save=null;          // เซฟของผู้เล่นปัจจ�
 let B=null;             // สถานะฉากต่อสู้
 let lastBattle=null;    // {kind,id} ไว้ใช้กด "สู้อีกครั้ง"/"ด่านถัดไป"
 let guestAvatar=AVATARS[0];
+let navBack="map";      // หน้าร้านค้า/ตัวละคร/ทักษะ กด "กลับ" แล้วไปไหน (map หรือ explore)
+function goBack(){if(navBack==="explore")resumeExplore();else goMap()}
 
 /* ====================================================================== */
 /* Screens                                                                 */
@@ -32,7 +34,8 @@ function playDialog(lines){
 }
 function showDialogLine_(){
   const l=dialogQueue.shift();
-  $("dialog-img").src=mascotSrc(l.mood);
+  $("dialog-img").src=l.sprite?spriteURL(l.sprite):mascotSrc(l.mood);
+  $("dialog-name").textContent=l.name||"ครูแฟล็ก";
   $("dialog-line").textContent=l.text;
 }
 function advanceDialog(){
@@ -133,12 +136,14 @@ function renderHud_(){
   $("hud-xp").style.width=(save.level>=PLAYER_MAX_LEVEL?100:clamp(save.xp/xpToNext(save.level)*100,0,100))+"%";
   $("hud-gold").textContent=save.gold;
   $("hud-stars").textContent=`${totalStars_(save)}/${MAX_STARS}`;
+  const pts=skillPointsFree();$("skills-btn").textContent=pts?`🌳 ทักษะ (${pts})`:"🌳 ทักษะ";$("skills-btn").classList.toggle("notify",pts>0);
 }
 function starsStr_(n){return "⭐".repeat(n)+"☆".repeat(3-n)}
 function goMap(){
   if(!save){renderTitle();return}
   B=null;
   renderHud_();updateSfxBtn_();
+  $("ae-art").innerHTML=heroImg(save.avatar,48);document.querySelector(".adventure-entry").style.setProperty("--bg",`url(${bgURL(0)})`);
   mascotSay("map-mascot",pickOne(LINES.mapHello));
   const list=$("world-list");list.innerHTML="";
   let focusEl=null;
@@ -196,9 +201,10 @@ function closePreview(){$("preview-modal").classList.add("hidden")}
 /* ====================================================================== */
 /* Battle                                                                  */
 /* ====================================================================== */
-async function startBattle(kind,ref){
+async function startBattle(kind,ref,opts){
+  opts=opts||{};
   lastBattle={kind,ref};
-  const lvl=save.level,maxHp=playerMaxHp(lvl);
+  const lvl=save.level,maxHp=effMaxHp();
   let enemy,wi,phases=1;
   if(kind==="stage"){
     wi=worldOfStage(ref);const s=monsterStats(ref),m=MONSTERS[ref];
@@ -208,15 +214,16 @@ async function startBattle(kind,ref){
     enemy={name:w.boss.name,sprite:w.boss.sprite,img:w.boss.final?mascotSrc(FINAL_BOSS_PHASES[0].mood):null,hp:s.hp,maxHp:s.hp,atk:s.atk,gold:s.gold,xp:s.xp,final:!!w.boss.final};
   }
   const prevClears=kind==="stage"?((save.stages[ref]||{}).clears||0):((save.bosses[WORLDS[wi].id]||{}).clears||0);
-  B={kind,ref,wi,enemy,phases,phase:1,prevClears,
-     player:{hp:maxHp,maxHp,atk:playerAtk(lvl)},
+  B={kind,ref,wi,enemy,phases,phase:1,prevClears,origin:opts.origin||"map",startSub:opts.startSub,
+     player:{hp:clamp(opts.hp==null?maxHp:opts.hp,1,maxHp),maxHp,atk:effAtk()},eyeUsed:false,
      turn:0,combo:0,maxCombo:0,correct:0,wrong:0,crits:0,wrongList:[],
-     shield:false,charging:false,q:null,answered:false,timer:null,timeLeft:0,timeMax:0,hintStep:0,fiftyUsed:false,over:false,lowHpWarned:false};
+     shield:skillLv("def")>=3,charging:false,q:null,answered:false,timer:null,timeLeft:0,timeMax:0,hintStep:0,fiftyUsed:false,over:false,lowHpWarned:false};
   document.documentElement.style.setProperty("--wc",WORLDS[wi].color);
   $("enemy-box").style.setProperty("--wc",WORLDS[wi].color);
   $("enemy-box").classList.remove("enraged");
   $("enemy-stage").style.backgroundImage=`url(${bgURL(wi)})`;
-  $("battle-label").textContent=kind==="stage"?`${WORLDS[wi].icon} STAGE ${ref} · ${TOPICS[ref]}`:`${WORLDS[wi].icon} BOSS · ${WORLDS[wi].name}`;
+  $("battle-flee").textContent=B.origin==="explore"?"🏃 ถอย":"🏃 หนี";
+  $("battle-label").textContent=B.origin==="explore"&&kind==="stage"?`🧭 ${TOPICS[ref]}`:kind==="stage"?`${WORLDS[wi].icon} STAGE ${ref} · ${TOPICS[ref]}`:`${WORLDS[wi].icon} BOSS · ${WORLDS[wi].name}`;
   $("player-avatar").innerHTML=heroImg(save.avatar,52);
   $("player-name").textContent=`${save.name} Lv.${lvl}`;
   $("enemy-sprite").className="enemy-sprite";
@@ -259,6 +266,7 @@ function renderItemBar_(){
     if(k==="fifty"&&B&&B.fiftyUsed)usable=false;
     return `<button type="button" class="item-btn" ${usable?"":"disabled"} onclick="useItem('${k}')" title="${esc(it.desc)}">${it.icon}<small>${esc(it.name.split(" ")[0])}</small><span class="cnt">${n}</span></button>`;
   }).join("");
+  if(skillLv("wis")>=2)html+=`<button type="button" class="item-btn" ${canAct&&!B.eyeUsed&&!B.fiftyUsed?"":"disabled"} onclick="useEye()" title="ทักษะสายตาคม: ตัดตัวเลือกผิด 2 ข้อ (ฟรี 1 ครั้ง)">👁️<small>สายตาคม</small></button>`;
   const hints=hintsFor_();
   html+=`<button type="button" class="item-btn" ${canAct&&B.hintStep<hints.length?"":"disabled"} onclick="useHint()" title="คำใบ้จากครูแฟล็ก (ดาเมจข้อนี้ลดครึ่งหนึ่ง)">💡<small>คำใบ้</small></button>`;
   bar.innerHTML=html;
@@ -270,7 +278,7 @@ function pickQuestion_(){
   const t=B.turn;let stageId,sub;
   if(B.kind==="stage"){
     stageId=B.ref;
-    const start=Math.min(5,1+B.prevClears*2);           // ชนะด่านนี้แล้ว → รอบต่อไปเริ่มยากขึ้น
+    const start=B.startSub||Math.min(5,1+B.prevClears*2);           // ชนะด่านนี้แล้ว → รอบต่อไปเริ่มยากขึ้น
     sub=start+Math.floor(t*1.2);
   }else if(B.enemy.final){
     stageId=pickOne("ABCDEFGHIJKLMNOPQRSTUVWXY".split(""));
@@ -284,6 +292,7 @@ function pickQuestion_(){
 function questionTime_(q){
   let s=Math.round((STAGE_BASE_TIME[q.topicKey]||200)/10);   // 15–26 วินาที
   if(q.mode==="word")s+=12;
+  s+=bonusTime();
   if(B.kind==="boss"&&B.phase>=2)s*=0.85;
   if(B.enemy.final&&B.phase>=3)s*=0.85;
   return Math.max(10,Math.round(s));
@@ -328,7 +337,7 @@ function updateTimer_(){
   if(sec<=3&&sec>0&&sec!==B.lastTick){B.lastTick=sec;SFX.tick()}
 }
 // ตอบเร็ว (ใช้เวลาไม่ถึง 35% ของเวลาทั้งหมด) = คริติคอล
-function isCritWindow_(){return B.timeLeft>=B.timeMax*0.65}
+function isCritWindow_(){return B.timeLeft>=B.timeMax*critThreshold()}
 
 function checkAnswer_(value,correct){
   if(value===correct)return true;
@@ -349,8 +358,9 @@ async function answer_(value,btn){
   B.turn++;
   if(ok){
     B.correct++;B.combo++;B.maxCombo=Math.max(B.maxCombo,B.combo);if(crit)B.crits++;
-    let dmg=B.player.atk*(1+Math.min(B.combo-1,5)*0.1)*(crit?1.5:1)*(0.9+Math.random()*0.2);
-    if(B.hintStep>0)dmg*=0.5;
+    let dmg=B.player.atk*(1+Math.min(B.combo-1,5)*comboStep())*(crit?1.5:1)*(0.9+Math.random()*0.2);
+    if(B.hintStep>0&&skillLv("wis")<3)dmg*=0.5;
+    if(skillLv("atk")>=4&&B.combo%5===0){dmg*=2;setTimeout(()=>floatText_("สมการพิฆาต!","crit"),200)}
     let interrupt=false;
     if(B.charging){dmg*=1.3;interrupt=true;B.charging=false;$("charge-warning").classList.add("hidden")}
     dmg=Math.max(1,Math.round(dmg));
@@ -422,7 +432,7 @@ async function enemyAttack_(){
     B.shield=false;SFX.block();floatText_("BLOCK!","miss");toast("🛡️ โล่ป้องกันการโจมตีไว้ได้!");
     updateBattleHud_();return;
   }
-  let dmg=e.atk*(0.9+Math.random()*0.2);
+  let dmg=e.atk*(0.9+Math.random()*0.2)*damageTakenMul();
   if(B.charging){dmg*=2.2;toast(`💥 ${e.name} ปล่อยท่าไม้ตาย!`)}
   B.charging=false;$("charge-warning").classList.add("hidden");
   dmg=Math.max(1,Math.round(dmg));
@@ -454,6 +464,13 @@ function useItem(k){
   save.items[k]--;persist();
   updateBattleHud_();
 }
+function useEye(){
+  if(!B||B.answered||B.over||B.eyeUsed||B.fiftyUsed)return;
+  B.eyeUsed=true;B.fiftyUsed=true;
+  const wrong=[...document.querySelectorAll("#q-answers .answer")].filter(b=>!checkAnswer_(b.dataset.value,B.q.answer));
+  wrong.sort(()=>Math.random()-.5).slice(0,2).forEach(b=>{b.classList.add("removed");b.disabled=true});
+  SFX.item();toast("👁️ สายตาคม! ตัดตัวเลือกผิดออก 2 ข้อ");renderItemBar_();
+}
 function useHint(){
   if(!B||B.answered||B.over)return;
   const hints=hintsFor_();if(B.hintStep>=hints.length)return;
@@ -462,13 +479,14 @@ function useHint(){
   mascotSay("q-hint",{mood:B.hintStep===1?"explain":"thinking",text:shown});
   $("q-hint").querySelector("p").style.whiteSpace="pre-line";
   $("q-hint").classList.remove("hidden");
-  if(B.hintStep===1)toast("💡 ใช้คำใบ้แล้ว — ข้อนี้ตีเบาลงครึ่งหนึ่ง");
+  if(B.hintStep===1)toast(skillLv("wis")>=3?"💡 ครูช่วยสอน: ใช้คำใบ้แล้วยังตีแรงเท่าเดิม":"💡 ใช้คำใบ้แล้ว — ข้อนี้ตีเบาลงครึ่งหนึ่ง");
   renderItemBar_();
 }
 function fleeBattle(){
-  if(!B||B.over)return goMap();
+  if(!B||B.over)return B&&B.origin==="explore"?resumeExplore():goMap();
   if(!confirm("หนีออกจากการต่อสู้? (ไม่ได้รางวัล แต่ไม่เสียอะไร)"))return;
-  clearInterval(B.timer);B.over=true;goMap();
+  clearInterval(B.timer);B.over=true;
+  if(B.origin==="explore"){exploreFled(B.player.hp);resumeExplore()}else goMap();
 }
 
 /* ====================================================================== */
@@ -489,7 +507,11 @@ async function endBattle_(won){
   save.stats.battles++;save.stats.correct+=B.correct;save.stats.wrong+=B.wrong;save.stats.crits+=B.crits;
   save.stats.bestCombo=Math.max(save.stats.bestCombo,B.maxCombo);
   let gold=0,xp=0,worldCleared=false,finalCleared=false;
-  if(won){
+  const field=B.origin==="explore"&&B.kind==="stage";
+  if(won&&field){
+    save.stats.wins++;$("enemy-sprite").classList.add("dead");SFX.win();
+    gold=Math.round(e.gold*0.5)+stars*2;xp=Math.round(e.xp*0.8);
+  }else if(won){
     save.stats.wins++;
     $("enemy-sprite").classList.add("dead");
     SFX.win();
@@ -504,16 +526,18 @@ async function endBattle_(won){
       worldCleared=first;
       if(e.final&&!save.finalCleared){save.finalCleared=true;finalCleared=true}
     }
-  }else{
+  }else if(!won){
     save.stats.losses++;SFX.lose();
     xp=Math.round(e.xp*0.25);   // แพ้ก็ยังได้ EXP เล็กน้อยจากการฝึก
   }
+  gold=Math.round(gold*rewardMul());xp=Math.round(xp*rewardMul());
   save.gold+=gold;
   const ups=gainXp_(xp);
+  if(B.origin==="explore")exploreBattleEnded(won,p.hp);
   persist();
   await sleep(won?700:300);
 
-  $("result-kicker").textContent=B.kind==="boss"?"BOSS BATTLE":`STAGE ${B.ref}`;
+  $("result-kicker").textContent=B.kind==="boss"?"BOSS BATTLE":field?`🧭 ${ZONE_NAMES[B.ref]||"ผจญภัย"}`:`STAGE ${B.ref}`;
   $("result-title").textContent=won?(B.kind==="boss"?`ปราบ ${e.name} สำเร็จ!`:"ชนะแล้ว! 🎉"):"พ่ายแพ้... 😵";
   $("result-stars").innerHTML=won?[1,2,3].map(i=>`<span class="${i<=stars?"":"off"}" style="animation-delay:${i*0.15}s">⭐</span>`).join(""):"";
   $("result-correct").textContent=`${B.correct}/${total}`;
@@ -530,9 +554,13 @@ async function endBattle_(won){
   $("result-review-list").innerHTML=B.wrongList.map((w,i)=>`<div class="rv"><div>${i+1}. ${esc(w.text)}</div>
     <div class="a">✓ ${esc(w.answer)}${w.picked!==null?` <span style="color:#fca5a5;font-weight:500">(ตอบ ${esc(w.picked)})</span>`:" <span style=\"color:#fca5a5;font-weight:500\">(หมดเวลา)</span>"}</div>${w.explain?`<div class="e">💡 ${esc(w.explain)}</div>`:""}</div>`).join("");
   const nxt=nextTarget_();
-  $("result-next").classList.toggle("hidden",!won||!nxt);
+  const ex=B.origin==="explore";
+  $("result-next").classList.toggle("hidden",ex||!won||!nxt);
+  $("result-retry").classList.toggle("hidden",ex);$("result-map").classList.toggle("hidden",ex);
+  $("result-explore").classList.toggle("hidden",!ex);
+  $("result-explore").textContent=ex&&!won?"🏠 กลับหมู่บ้าน":"🧭 ผจญภัยต่อ";
   showScreen("result");
-  if(ups.length){SFX.levelUp();await sleep(400);await playDialog([{...LINES.levelUp,text:`${LINES.levelUp.text} (Lv.${save.level} · HP ${playerMaxHp(save.level)} · ATK ${playerAtk(save.level)})`}])}
+  if(ups.length){SFX.levelUp();await sleep(400);await playDialog([{...LINES.levelUp,text:`${LINES.levelUp.text} (Lv.${save.level} · HP ${effMaxHp()} · ATK ${effAtk()}) และได้แต้มทักษะ +${ups.length} — ไปอัปได้ที่ "🌳 ทักษะ"`}])}
   if(finalCleared)await playDialog(FINAL_VICTORY);
   else if(worldCleared)await playDialog([LINES.worldClear]);
 }
@@ -552,8 +580,8 @@ function retryBattle(){if(lastBattle)startBattle(lastBattle.kind,lastBattle.ref)
 /* Shop & hero                                                             */
 /* ====================================================================== */
 const ITEM_MAX=9;
-function openShop(){
-  SFX.click();
+function openShop(from){
+  SFX.click();navBack=from||"map";
   mascotSay("shop-mascot",LINES.shopHello);
   renderShop_();showScreen("shop");
 }
@@ -572,8 +600,8 @@ function buyItem(k){
   SFX.coin();toast(`ซื้อ ${it.icon} ${it.name} แล้ว!`);
   renderShop_();
 }
-function openHero(){
-  SFX.click();
+function openHero(from){
+  SFX.click();navBack=from||"map";
   const s=save.stats,total=s.correct+s.wrong;
   $("hero-avatar").innerHTML=heroImg(save.avatar,72);
   $("hero-name").textContent=save.name;
@@ -581,7 +609,7 @@ function openHero(){
   $("hero-account").textContent=save.studentId?`บัญชีนักเรียน: ${save.studentId}`:"ผู้เยี่ยมชม (เซฟอยู่ในเครื่องนี้เท่านั้น)";
   const cell=(l,v)=>`<div><small>${l}</small><b>${v}</b></div>`;
   $("hero-stats").innerHTML=[
-    cell("❤️ HP สูงสุด",playerMaxHp(save.level)),cell("⚔️ พลังโจมตี",playerAtk(save.level)),
+    cell("❤️ HP สูงสุด",effMaxHp()),cell("⚔️ พลังโจมตี",effAtk()),
     cell("✨ EXP",save.level>=PLAYER_MAX_LEVEL?"MAX":`${save.xp}/${xpToNext(save.level)}`),cell("⭐ ดาวรวม",`${totalStars_(save)}/${MAX_STARS}`),
     cell("⚔️ ชนะ / สู้ทั้งหมด",`${s.wins}/${s.battles}`),cell("🎯 ความแม่นยำ",total?Math.round(s.correct/total*100)+"%":"—"),
     cell("🔥 คอมโบสูงสุด",s.bestCombo),cell("💥 คริติคอล",s.crits),
@@ -599,4 +627,5 @@ function resetProgress(){
 /* Boot                                                                    */
 /* ====================================================================== */
 updateSfxBtn_();
+bindExploreControls_();
 renderTitle();

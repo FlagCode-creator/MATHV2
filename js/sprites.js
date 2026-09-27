@@ -6,7 +6,8 @@ const PALETTE={
   k:"#181425",w:"#ffffff",l:"#c0cbdc",e:"#8b9bb4",E:"#5a6988",a:"#3a4466",
   r:"#e43b44",R:"#a22633",o:"#f77622",y:"#feae34",Y:"#fee761",
   g:"#63c74d",G:"#3e8948",h:"#265c42",c:"#2ce8f5",b:"#0099db",B:"#124e89",
-  p:"#b55088",P:"#68386c",m:"#f6757a",n:"#b86f50",N:"#733e39",s:"#e8b796",t:"#ead4aa"
+  p:"#b55088",P:"#68386c",m:"#f6757a",n:"#b86f50",N:"#733e39",s:"#e8b796",t:"#ead4aa",
+  q:"#c2a35a",Q:"#8f7639"
 };
 const OUTLINE="#181425";
 
@@ -219,8 +220,8 @@ const HERO_CLASSES={
 // ภาพอวตารที่เลือกได้ (ตามลำดับที่แสดง)
 const HERO_KEYS=Object.keys(HERO_CLASSES);
 
-function heroRows_(key){
-  const cls=HERO_CLASSES[key]||HERO_CLASSES.student_m;
+function heroRows_(key){return buildHeroRows_(HERO_CLASSES[key]||HERO_CLASSES.student_m)}
+function buildHeroRows_(cls){
   const rows=HERO_BASE.slice();
   Object.entries(cls.rows||{}).forEach(([i,r])=>{rows[+i]=r});
   return rows.map(r=>r.replace(/[HCADF]/g,ch=>cls.pal[ch]||ch).replace(/m/g,cls.pal.m||"m"));
@@ -235,10 +236,11 @@ function spriteRows_(key){
   if(key&&key.indexOf("hero:")===0)return heroRows_(key.slice(5));
   return null;
 }
-// คืนค่า data URL ของภาพ (ขนาดจริง 1 พิกเซลต่อช่อง + ขอบ 1 พิกเซล) — ย่อ/ขยายด้วย CSS แบบ pixelated
-function spriteURL(key){
-  if(SPRITE_CACHE[key])return SPRITE_CACHE[key];
-  const rows=spriteRows_(key);if(!rows)return "";
+// วาดภาพลงแคนวาส (ขนาดจริง 1 พิกเซลต่อช่อง + ขอบ 1 พิกเซลรอบตัว) — ใช้ทั้งใน HTML (data URL) และแผนที่ผจญภัย
+const SPRITE_CANVAS={};
+function spriteCanvas(key){
+  if(SPRITE_CANVAS[key])return SPRITE_CANVAS[key];
+  const rows=spriteRows_(key);if(!rows)return null;
   const h=rows.length,w=Math.max(...rows.map(r=>r.length));
   const at=(x,y)=>(y>=0&&y<h&&x>=0&&x<w&&rows[y][x]&&rows[y][x]!=="."&&PALETTE[rows[y][x]])?rows[y][x]:null;
   const cv=document.createElement("canvas");cv.width=w+2;cv.height=h+2;
@@ -261,6 +263,11 @@ function spriteURL(key){
     }
   }
   ctx.putImageData(img,0,0);
+  return SPRITE_CANVAS[key]=cv;
+}
+function spriteURL(key){
+  if(SPRITE_CACHE[key])return SPRITE_CACHE[key];
+  const cv=spriteCanvas(key);if(!cv)return "";
   return SPRITE_CACHE[key]=cv.toDataURL();
 }
 function spriteImg(key,size,cls){
@@ -270,3 +277,68 @@ function spriteImg(key,size,cls){
 // อวตารของผู้เล่น (รองรับเซฟเก่าที่เก็บเป็นอีโมจิ)
 function heroKey(avatar){return HERO_CLASSES[avatar]?avatar:"student_m"}
 function heroImg(avatar,size,cls){return spriteImg("hero:"+heroKey(avatar),size,cls)}
+
+/* ---------------- NPC ในโหมดผจญภัย (ใช้โครงเดียวกับตัวละครผู้เล่น) ---------------- */
+const NPC_CLASSES={
+  npc_flag:{pal:{H:"k",C:"q",A:"y",D:"Q",F:"k",m:"R"},rows:{7:"...QCCCCCCCCQ..."}},                 // ครูแฟล็ก (ชุดกากี)
+  npc_shop:{pal:{H:"n",C:"g",A:"w",D:"N",F:"N",m:"R"},rows:{9:"..sCCCwwwwCCCs..",10:"..sCCCwwwwCCCs.."}}, // แม่ค้า
+  npc_inn:{pal:{H:"Y",C:"m",A:"w",D:"p",F:"N",m:"R"},rows:{3:"...HHssssssHH...",5:"...HssssssssH...",6:"...H.ssmmss.H..."}}, // เจ้าของโรงแรม
+  npc_carpenter:{pal:{H:"y",C:"o",A:"n",D:"B",F:"N",m:"R"},rows:{2:"...HHHHHHHHHH..."}},               // ช่างไม้ (หมวกนิรภัย)
+  npc_farmer:{pal:{H:"t",C:"b",A:"n",D:"n",F:"N",m:"R"},rows:{1:"....HHHHHHHH....",2:"..HHHHHHHHHHHH.."}}, // ชาวสวน (หมวกสาน)
+  npc_kid:{pal:{H:"o",C:"r",A:"y",D:"B",F:"k",m:"R"}}
+};
+Object.entries(NPC_CLASSES).forEach(([k,cls])=>{SPRITES[k]=buildHeroRows_(cls)});
+
+/* ---------------- วัตถุบนแผนที่ผจญภัย (16×16) ---------------- */
+Object.assign(SPRITES,{
+obj_tree:[
+"................",".....GGGGGG.....","...GGggggggGG...","..GggggggggggG..",
+".GggggggggggggG.",".GgggggggGgggggG","GggggGgggggggggG","GggggggggGgggggG",
+".GggggggggggggG.",".GgGgggggggGggG.","..GggggggggggG..","...GGggggggGG...",
+".....GGnnGG.....",".......nn.......","......nnnn......","................"],
+obj_rock:[
+"................","................","................","................",
+"................","................","......eeee......","....eeeeeeee....",
+"...eeleeeeeee...","..eelleeeeeeee..","..eeleeeeeeEee..","..eeeeeeeeEEee..",
+"...eeeeeEEEee...","....EEEEEEEE....","................","................"],
+obj_fence:[
+"................","................","................","................",
+"..nn......nn....","..nn......nn....","nnnnnnnnnnnnnnnn","NNNNNNNNNNNNNNNN",
+"..nn......nn....","..nn......nn....","nnnnnnnnnnnnnnnn","NNNNNNNNNNNNNNNN",
+"..nn......nn....","..NN......NN....","................","................"],
+obj_sign:[
+"................","................","................","..nnnnnnnnnnnn..",
+"..nttttttttttn..","..ntNNNNNNNNtn..","..nttttttttttn..","..ntNNNNNNtttn..",
+"..nttttttttttn..","..nnnnnnnnnnnn..",".......nn.......",".......nn.......",
+".......nn.......","......NNNN......","................","................"],
+obj_tablet:[
+"................","................",".....eeeeee.....","....eeeeeeee....",
+"...eeeeeeeeee...","...eeEEEEEEee...","...eeeeeeeeee...","...eeEEEEEeee...",
+"...eeeeeeeeee...","...eeEEEEEEee...","...eeeeeeeeee...","...eeeeeeeeee...",
+"..EEEEEEEEEEEE..","..EEEEEEEEEEEE..","................","................"],
+obj_chest:[
+"................","................","................","................",
+"...nnnnnnnnnn...","..nNNNNNNNNNNn..","..nnnnnnnnnnnn..","..yyyyyyyyyyyy..",
+"..nnnnnyynnnnn..","..nnnnnkknnnnn..","..nnnnnnnnnnnn..","..nNNNNNNNNNNn..",
+"..yyyyyyyyyyyy..","..NNNNNNNNNNNN..","................","................"],
+obj_chest_open:[
+"................","................","................","..NNNNNNNNNNNN..",
+"..nnnnnnnnnnnn..","..nNNNNNNNNNNn..","..nkkkkkkkkkkn..","..yyyyyyyyyyyy..",
+"..nnnnnnnnnnnn..","..nnnnnnnnnnnn..","..nnnnnnnnnnnn..","..nNNNNNNNNNNn..",
+"..yyyyyyyyyyyy..","..NNNNNNNNNNNN..","................","................"],
+obj_gate:[
+"................","EEEEEEEEEEEEEEEE","eeeeeeeeeeeeeeee","EEEEEEEEEEEEEEEE",
+".a..a..a..a..a..",".a..a..a..a..a..",".a..a..a..a..a..",".a..a..a..a..a..",
+"eeeeeeyyyyeeeeee",".a..a.yeey.a..a.",".a..a..a..a..a..",".a..a..a..a..a..",
+".a..a..a..a..a..",".a..a..a..a..a..","EEEEEEEEEEEEEEEE","................"],
+obj_carrot:[
+"................","................","................","................",
+".......g........","......ggg.g.....",".....g.ggg......","......ggg.......",
+".......gg.......","......oooo......","......oooo......",".......oo.......",
+".......oo.......","........o.......","................","................"],
+obj_well:[
+"................","..RRRRRRRRRRRR..",".RRRRRRRRRRRRRR.","...n........n...",
+"...n........n...","...n...nn...n...","...n........n...",".eeeeeeeeeeeeee.",
+".eEEEEEEEEEEEEe.",".ebbbbbbbbbbbbe.",".eeeeeeeeeeeeee.",".eEeeEeeEeeEeee.",
+".eeeeeeeeeeeeee.","..EEEEEEEEEEEE..","................","................"]
+});

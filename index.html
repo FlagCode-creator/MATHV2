@@ -14,7 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
 <!-- ?v= คือเลขเวอร์ชันไฟล์: service worker ของเว็บหลักแคชไฟล์ .css/.js แบบ cache-first
      แก้ไฟล์ไหนแล้วให้เพิ่มเลข ?v= ของไฟล์นั้น ผู้เล่นจะได้โหลดไฟล์ใหม่ทันที -->
-<link rel="stylesheet" href="css/game.css?v=3">
+<link rel="stylesheet" href="css/game.css?v=4">
 </head>
 <body>
 <div id="app">
@@ -86,10 +86,15 @@
   </header>
   <div class="map-actions">
    <button type="button" class="btn btn-small btn-gold" onclick="openShop()">🏪 ร้านค้า</button>
+   <button id="skills-btn" type="button" class="btn btn-small btn-ghost" onclick="openSkills()">🌳 ทักษะ</button>
    <button type="button" class="btn btn-small btn-ghost" onclick="openHero()">🧙 ตัวละคร</button>
    <button type="button" class="btn btn-small btn-ghost" onclick="replayIntro()">📜 เนื้อเรื่อง</button>
    <button id="sfx-btn" type="button" class="btn btn-small btn-ghost" onclick="toggleSfx()">🔊</button>
   </div>
+  <button type="button" class="adventure-entry" onclick="enterExplore()">
+   <span class="ae-art" id="ae-art"></span>
+   <span class="ae-text"><small>NEW · โหมดผจญภัย (ทดลอง)</small><b>🧭 เดินสำรวจทุ่งหญ้าจำนวน</b><em>เดินเอง คุยกับ NPC ไขปริศนา ทำภารกิจ แล้วสู้บอส!</em></span>
+  </button>
   <div id="map-mascot" class="mascot-bubble"></div>
   <div id="world-list" class="world-list"></div>
  </section>
@@ -97,7 +102,7 @@
  <!-- ===== BATTLE ===== -->
  <section id="screen-battle" class="screen">
   <div class="battle-top">
-   <button type="button" class="btn-link light" onclick="fleeBattle()">🏃 หนี</button>
+   <button id="battle-flee" type="button" class="btn-link light" onclick="fleeBattle()">🏃 หนี</button>
    <span id="battle-label" class="battle-label"></span>
    <span class="chip small">🔥 <b id="battle-combo">0</b></span>
   </div>
@@ -157,8 +162,9 @@
    </div>
    <div class="result-actions">
     <button id="result-next" type="button" class="btn btn-lime" onclick="resultNext()">ด่านถัดไป ▶</button>
-    <button type="button" class="btn btn-gold" onclick="retryBattle()">🔁 สู้อีกครั้ง</button>
-    <button type="button" class="btn btn-ghost" onclick="goMap()">🗺️ แผนที่</button>
+    <button id="result-explore" type="button" class="btn btn-lime hidden" onclick="resumeExplore()">🧭 ผจญภัยต่อ</button>
+    <button id="result-retry" type="button" class="btn btn-gold" onclick="retryBattle()">🔁 สู้อีกครั้ง</button>
+    <button id="result-map" type="button" class="btn btn-ghost" onclick="goMap()">🗺️ แผนที่</button>
    </div>
   </div>
  </section>
@@ -166,7 +172,7 @@
  <!-- ===== SHOP ===== -->
  <section id="screen-shop" class="screen">
   <div class="battle-top">
-   <button type="button" class="btn-link light" onclick="goMap()">← แผนที่</button>
+   <button type="button" class="btn-link light" onclick="goBack()">← กลับ</button>
    <span class="battle-label">🏪 ร้านค้าครูแฟล็ก</span>
    <span class="chip">🪙 <b id="shop-gold"></b></span>
   </div>
@@ -177,7 +183,7 @@
  <!-- ===== HERO ===== -->
  <section id="screen-hero" class="screen">
   <div class="battle-top">
-   <button type="button" class="btn-link light" onclick="goMap()">← แผนที่</button>
+   <button type="button" class="btn-link light" onclick="goBack()">← กลับ</button>
    <span class="battle-label">🧙 ข้อมูลตัวละคร</span>
    <span></span>
   </div>
@@ -200,7 +206,62 @@
   </div>
  </section>
 
+ <!-- ===== SKILLS ===== -->
+ <section id="screen-skills" class="screen">
+  <div class="battle-top">
+   <button type="button" class="btn-link light" onclick="goBack()">← กลับ</button>
+   <span class="battle-label">🌳 ต้นไม้ทักษะ</span>
+   <span class="chip">แต้ม <b id="skill-points"></b></span>
+  </div>
+  <p class="skill-note">เลเวลอัป 1 ครั้ง = 1 แต้ม · แต่ละสายต้องเรียนตามลำดับจากบนลงล่าง</p>
+  <div id="skill-tree" class="skill-tree"></div>
+ </section>
+
+ <!-- ===== EXPLORE (โหมดผจญภัย) ===== -->
+ <section id="screen-explore" class="screen">
+  <div id="ex-wrap" class="ex-wrap">
+   <canvas id="ex-canvas" class="pixelated"></canvas>
+   <div class="ex-hud">
+    <div class="ex-hero">
+     <span id="ex-avatar"></span>
+     <div class="ex-hero-info"><b id="ex-name"></b><div class="hp-bar ex"><span id="ex-hp" class="hp-fill"></span></div><small id="ex-hp-text"></small></div>
+    </div>
+    <div class="ex-right">
+     <span class="chip">🪙 <b id="ex-gold"></b></span>
+     <button id="ex-menu-btn" type="button" class="ex-menu-btn" onclick="openExMenu()">☰</button>
+    </div>
+   </div>
+   <div id="ex-quest" class="ex-quest"></div>
+   <div id="ex-area" class="ex-area"></div>
+   <div class="ex-pad">
+    <button type="button" data-dir="up" class="up" aria-label="ขึ้น">▲</button>
+    <button type="button" data-dir="left" class="left" aria-label="ซ้าย">◀</button>
+    <button type="button" data-dir="right" class="right" aria-label="ขวา">▶</button>
+    <button type="button" data-dir="down" class="down" aria-label="ลง">▼</button>
+   </div>
+   <button id="ex-a" type="button" class="ex-a" aria-label="คุย/ตรวจสอบ">A</button>
+  </div>
+ </section>
+
  <!-- ===== MODALS ===== -->
+ <div id="ex-menu" class="modal hidden">
+  <div id="ex-menu-body" class="modal-card panel"></div>
+ </div>
+
+ <div id="puzzle-modal" class="modal hidden">
+  <div id="pz-card" class="modal-card panel puzzle-card">
+   <div class="pz-head"><span id="pz-portrait" class="pz-portrait"></span><h2 id="pz-title"></h2></div>
+   <p id="pz-text" class="pz-text"></p>
+   <div id="pz-input" class="pz-input">?</div>
+   <p id="pz-hint" class="pz-hint hidden"></p>
+   <div id="pz-keys" class="pz-keys"></div>
+   <div class="pz-actions">
+    <button id="pz-cancel" type="button" class="btn btn-ghost">ไว้ก่อน</button>
+    <button id="pz-ok" type="button" class="btn btn-lime">✓ ยืนยัน</button>
+   </div>
+  </div>
+ </div>
+
  <div id="preview-modal" class="modal hidden" onclick="if(event.target===this)closePreview()">
   <div class="modal-card panel">
    <div id="preview-body"></div>
@@ -215,7 +276,7 @@
   <div class="dialog-box">
    <img id="dialog-img" class="dialog-img pixelated" alt="ครูแฟล็ก">
    <div class="dialog-text">
-    <b class="dialog-name">ครูแฟล็ก</b>
+    <b id="dialog-name" class="dialog-name">ครูแฟล็ก</b>
     <p id="dialog-line"></p>
     <span class="dialog-next">แตะเพื่อไปต่อ ▼</span>
    </div>
@@ -227,11 +288,14 @@
 
 <script src="js/util.js?v=1"></script>
 <script src="js/questions.js?v=1"></script>
-<script src="js/sprites.js?v=1"></script>
+<script src="js/sprites.js?v=2"></script>
 <script src="js/backgrounds.js?v=1"></script>
+<script src="js/skills.js?v=1"></script>
+<script src="js/explore-data.js?v=1"></script>
+<script src="js/explore.js?v=2"></script>
 <script src="js/data.js?v=2"></script>
 <script src="js/save.js?v=2"></script>
 <script src="js/audio.js?v=1"></script>
-<script src="js/game.js?v=3"></script>
+<script src="js/game.js?v=4"></script>
 </body>
 </html>

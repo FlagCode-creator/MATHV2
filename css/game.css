@@ -177,7 +177,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .player-avatar{display:flex}
 .player-hp-wrap{flex:1;min-width:0}
 .shield-icon{font-size:1.6rem;animation:idle 1.2s infinite}
-.item-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.item-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(48px,1fr));gap:6px;margin-top:10px}
 .item-btn{position:relative;background:#0e1433;border:2px solid var(--line);border-radius:10px;padding:6px 0 4px;font-size:1.3rem;line-height:1.1}
 .item-btn small{display:block;font-size:.6rem;color:var(--muted);font-weight:600;margin-top:2px}
 .item-btn .cnt{position:absolute;top:-6px;right:-4px;background:var(--gold);color:#422006;font-size:.65rem;font-weight:800;border-radius:999px;padding:1px 6px}
@@ -262,3 +262,78 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .preview-sprite{border:3px solid #070a1c;border-radius:12px;padding:18px 0 8px;margin:6px 0}
 .title-scene{border:3px solid var(--line);border-radius:16px;margin-top:14px;padding:10px 0 12px;box-shadow:0 5px 0 #070a1c}
 .title-scene .title-mascot{margin-top:4px}
+
+/* ---- ปุ่มเข้าโหมดผจญภัยบนแผนที่ ---- */
+.adventure-entry{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:3px solid var(--lime);border-radius:16px;padding:10px 12px;margin:4px 0 6px;
+  background:linear-gradient(90deg,rgba(7,10,28,.85),rgba(7,10,28,.45)),var(--bg,#1b2250);background-size:cover;background-position:center bottom;image-rendering:pixelated;box-shadow:0 5px 0 #070a1c;animation:pulse 1.8s infinite}
+.ae-art{display:flex;flex-shrink:0}
+.ae-text{display:flex;flex-direction:column;min-width:0;text-shadow:0 2px 0 #000}
+.ae-text small{font-family:var(--pixel);font-size:.5rem;color:var(--lime)}
+.ae-text b{font-size:1.05rem;margin-top:2px}
+.ae-text em{font-style:normal;font-size:.8rem;color:#e0e7ff}
+.notify{box-shadow:0 0 0 3px var(--gold)!important}
+
+/* ---- ต้นไม้ทักษะ ---- */
+.skill-note{color:var(--muted);font-size:.85rem;margin:0 0 10px;text-align:center}
+.skill-tree{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.skill-branch{background:var(--panel);border:3px solid var(--sc);border-radius:14px;padding:8px 6px;display:flex;flex-direction:column;align-items:stretch;box-shadow:0 5px 0 #070a1c}
+.skill-branch h3{margin:0 0 6px;font-size:.9rem;text-align:center;color:var(--sc)}
+.skill-link{display:block;width:4px;height:10px;margin:0 auto;background:var(--sc);opacity:.5}
+.skill-node{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;background:#0e1433;border:2px solid var(--line);border-radius:10px;padding:8px 4px}
+.skill-node .sk-ic{font-size:1.5rem}
+.skill-node b{font-size:.8rem;line-height:1.2}
+.skill-node small{font-size:.66rem;color:var(--muted);line-height:1.3}
+.skill-node.learned{border-color:var(--sc);background:color-mix(in srgb,var(--sc) 22%,#0e1433)}
+.skill-node.can{border-color:var(--gold);animation:pulse 1.4s infinite}
+.skill-node.locked{opacity:.45}
+.sk-ok{position:absolute;top:2px;right:6px;color:var(--green);font-weight:800}
+
+/* ---- โหมดผจญภัย ---- */
+#screen-explore.active{position:fixed;inset:0;z-index:40;background:#000;display:flex;justify-content:center}
+.ex-wrap{position:relative;width:100%;max-width:560px;height:100%;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;transition:opacity .2s}
+.ex-wrap.fade{opacity:0}
+#ex-canvas{position:absolute;inset:0;display:block;image-rendering:pixelated;image-rendering:crisp-edges}
+.ex-hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 10px 0;pointer-events:none}
+.ex-hud>*{pointer-events:auto}
+.ex-hero{display:flex;align-items:center;gap:8px;background:rgba(11,16,38,.85);border:2px solid var(--line);border-radius:12px;padding:4px 10px 4px 6px;min-width:0}
+.ex-hero-info{display:flex;flex-direction:column;min-width:120px}
+.ex-hero-info b{font-size:.85rem}
+.ex-hero-info small{font-family:var(--pixel);font-size:.45rem;margin-top:3px}
+.hp-bar.ex{margin-top:3px;height:9px}
+.hp-bar.ex .hp-fill{background:linear-gradient(90deg,#22c55e,#a3e635)}
+.hp-bar.ex.low .hp-fill{background:linear-gradient(90deg,#dc2626,#f59e0b)}
+.ex-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.ex-right .chip{background:rgba(11,16,38,.85)}
+.ex-menu-btn{width:42px;height:42px;border-radius:12px;border:2px solid var(--line);background:rgba(11,16,38,.9);font-size:1.3rem;color:var(--ink)}
+.ex-quest{position:absolute;top:calc(64px + env(safe-area-inset-top));left:10px;right:10px;background:rgba(11,16,38,.82);border:2px solid var(--gold);border-radius:10px;padding:6px 10px;font-size:.82rem;font-weight:600;pointer-events:none}
+.ex-area{position:absolute;top:34%;left:0;right:0;text-align:center;font-weight:800;font-size:1.2rem;text-shadow:0 3px 0 #000,0 0 12px #000;opacity:0;pointer-events:none}
+.ex-area.show{animation:areaIn 2.4s ease both}
+@keyframes areaIn{0%{opacity:0;transform:translateY(10px)}15%,75%{opacity:1;transform:none}100%{opacity:0}}
+.ex-pad{position:absolute;left:14px;bottom:calc(18px + env(safe-area-inset-bottom));width:150px;height:150px;display:grid;grid-template-areas:". up ." "left . right" ". down .";grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:4px}
+.ex-pad button,.ex-a{border:3px solid rgba(255,255,255,.35);background:rgba(11,16,38,.55);color:#fff;font-size:1.2rem;border-radius:12px;touch-action:none}
+.ex-pad button.held,.ex-pad button:active{background:rgba(190,242,100,.45)}
+.ex-pad .up{grid-area:up}.ex-pad .left{grid-area:left}.ex-pad .right{grid-area:right}.ex-pad .down{grid-area:down}
+.ex-a{position:absolute;right:22px;bottom:calc(46px + env(safe-area-inset-bottom));width:78px;height:78px;border-radius:50%;font-family:var(--pixel);font-size:1.1rem;background:rgba(251,191,36,.55)}
+.ex-a:active{background:rgba(251,191,36,.85)}
+.ex-menu-quest{background:#0e1433;border-radius:10px;padding:8px 10px;text-align:left;margin-top:8px}
+.ex-menu-quest p{margin:4px 0}.ex-menu-quest small{color:var(--muted)}
+.ex-menu-items{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0 2px}
+
+/* ---- กล่องปริศนา ---- */
+.modal{z-index:55}
+.puzzle-card{text-align:left}
+.puzzle-card.shake{animation:shake .35s}
+.pz-head{display:flex;align-items:center;gap:10px}
+.pz-head h2{margin:0;font-size:1.1rem}
+.pz-portrait{flex-shrink:0;display:flex}
+.pz-portrait img{width:72px;height:72px;background:#e0e7ff;border:3px solid #1e1b4b;border-radius:12px}
+.pz-portrait img.sprite{background:#0e1433;border-color:var(--line)}
+.pz-text{margin:10px 0;line-height:1.55}
+.pz-input{font-family:var(--pixel);font-size:1.4rem;text-align:center;background:#0e1433;border:3px solid var(--line);border-radius:12px;padding:12px;letter-spacing:.1em}
+.pz-hint{margin:8px 0 0;background:#2a2410;border:2px solid var(--gold);border-radius:10px;padding:8px 10px;font-size:.88rem}
+.pz-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.pz-keys button{padding:12px 0;font-size:1.2rem;font-weight:700;background:var(--panel2);border:2px solid var(--line);border-radius:10px;box-shadow:0 3px 0 #070a1c}
+.pz-keys button:active{transform:translateY(2px);box-shadow:none}
+.pz-actions{display:flex;gap:8px;margin-top:12px}
+.pz-actions .btn{flex:1}
+@media (max-width:380px){.skill-node small{display:none}.ex-pad{width:132px;height:132px}}
