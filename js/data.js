@@ -9,41 +9,41 @@ const STAGE_BASE_TIME={A:150,B:150,C:160,D:160,E:170,F:200,G:170,H:180,I:180,J:1
 
 // มอนสเตอร์ประจำหัวข้อ
 const MONSTERS={
-  A:{name:"สไลม์บวก",sprite:"🟢"},        B:{name:"ค้างคาวลบ",sprite:"🦇"},
-  C:{name:"กระต่ายทวีคูณ",sprite:"🐇"},    D:{name:"ปูแบ่งก้าม",sprite:"🦀"},
-  E:{name:"หมูป่าสี่เครื่องหมาย",sprite:"🐗"},
-  F:{name:"เห็ดแบ่งเสี้ยว",sprite:"🍄"},   G:{name:"ผึ้งจุดทศนิยม",sprite:"🐝"},
-  H:{name:"จิ้งจอกลดราคา",sprite:"🦊"},    I:{name:"นกฮูกสัดส่วน",sprite:"🦉"},
-  J:{name:"แมงป่องยกกำลัง",sprite:"🦂"},   K:{name:"แมงมุมถอดราก",sprite:"🕷️"},
-  L:{name:"หินปริศนา x",sprite:"🗿"},      M:{name:"หมาป่ามากกว่า-น้อยกว่า",sprite:"🐺"},
-  N:{name:"อินทรีสองตัวแปร",sprite:"🦅"},
-  O:{name:"ซอมบี้พจน์คล้าย",sprite:"🧟"},  P:{name:"หุ่นกลแยกชิ้น",sprite:"🤖"},
-  Q:{name:"ผีสองราก",sprite:"👻"},
-  R:{name:"ปลาปักเป้าฟังก์ชัน",sprite:"🐡"},S:{name:"ฉลามความชัน",sprite:"🦈"},
-  T:{name:"งูทะเลอนุกรม",sprite:"🐍"},
-  U:{name:"โจ๊กเกอร์สุ่มดวง",sprite:"🃏"}, V:{name:"หนูนับสถิติ",sprite:"🐀"},
-  W:{name:"โกเลมพื้นที่",sprite:"🧱"},     X:{name:"นักธนูมุมฉาก",sprite:"🏹"},
-  Y:{name:"พายุอนุพันธ์",sprite:"🌪️"},     Z:{name:"เงาแห่งทุกหัวข้อ",sprite:"🦹"}
+  A:{name:"สไลม์บวก",sprite:"A"},        B:{name:"ค้างคาวลบ",sprite:"B"},
+  C:{name:"กระต่ายทวีคูณ",sprite:"C"},    D:{name:"ปูแบ่งก้าม",sprite:"D"},
+  E:{name:"หมูป่าสี่เครื่องหมาย",sprite:"E"},
+  F:{name:"เห็ดแบ่งเสี้ยว",sprite:"F"},   G:{name:"ผึ้งจุดทศนิยม",sprite:"G"},
+  H:{name:"จิ้งจอกลดราคา",sprite:"H"},    I:{name:"นกฮูกสัดส่วน",sprite:"I"},
+  J:{name:"แมงป่องยกกำลัง",sprite:"J"},   K:{name:"แมงมุมถอดราก",sprite:"K"},
+  L:{name:"หินปริศนา x",sprite:"L"},      M:{name:"หมาป่ามากกว่า-น้อยกว่า",sprite:"M"},
+  N:{name:"อินทรีสองตัวแปร",sprite:"N"},
+  O:{name:"ซอมบี้พจน์คล้าย",sprite:"O"},  P:{name:"หุ่นกลแยกชิ้น",sprite:"P"},
+  Q:{name:"ผีสองราก",sprite:"Q"},
+  R:{name:"ปลาปักเป้าฟังก์ชัน",sprite:"R"},S:{name:"ฉลามความชัน",sprite:"S"},
+  T:{name:"งูทะเลอนุกรม",sprite:"T"},
+  U:{name:"โจ๊กเกอร์สุ่มดวง",sprite:"U"}, V:{name:"หนูนับสถิติ",sprite:"V"},
+  W:{name:"โกเลมพื้นที่",sprite:"W"},     X:{name:"นักธนูมุมฉาก",sprite:"X"},
+  Y:{name:"พายุอนุพันธ์",sprite:"Y"},     Z:{name:"เงาแห่งทุกหัวข้อ",sprite:"Z"}
 };
 
 // 9 ดินแดน — ด่านในดินแดนต้องผ่านตามลำดับ แล้วจึงสู้บอสประจำดินแดน
 const WORLDS=[
   {id:"w1",name:"ทุ่งหญ้าจำนวน",icon:"🌾",color:"#22c55e",dark:"#14532d",stages:["A","B","C","D","E"],
-   boss:{name:"ราชาสไลม์ตัวเลข",sprite:"👑",title:"ผู้ปกครองทุ่งหญ้า"}},
+   boss:{name:"ราชาสไลม์ตัวเลข",sprite:"boss_w1",title:"ผู้ปกครองทุ่งหญ้า"}},
   {id:"w2",name:"ป่าเศษส่วน",icon:"🌲",color:"#10b981",dark:"#064e3b",stages:["F","G","H","I"],
-   boss:{name:"ต้นไม้ยักษ์พันส่วน",sprite:"🌳",title:"ผู้พิทักษ์ป่าลึก"}},
+   boss:{name:"ต้นไม้ยักษ์พันส่วน",sprite:"boss_w2",title:"ผู้พิทักษ์ป่าลึก"}},
   {id:"w3",name:"ถ้ำเลขยกกำลัง",icon:"🕳️",color:"#a855f7",dark:"#3b0764",stages:["J","K"],
-   boss:{name:"มังกรเลขชี้กำลัง",sprite:"🐉",title:"เจ้าแห่งถ้ำมืด"}},
+   boss:{name:"มังกรเลขชี้กำลัง",sprite:"boss_w3",title:"เจ้าแห่งถ้ำมืด"}},
   {id:"w4",name:"ขุนเขาสมการ",icon:"⛰️",color:"#3b82f6",dark:"#172554",stages:["L","M","N"],
-   boss:{name:"ยักษ์ตาชั่ง",sprite:"🧌",title:"ผู้รักษาสมดุล"}},
+   boss:{name:"ยักษ์ตาชั่ง",sprite:"boss_w4",title:"ผู้รักษาสมดุล"}},
   {id:"w5",name:"หอคอยพหุนาม",icon:"🗼",color:"#8b5cf6",dark:"#2e1065",stages:["O","P","Q"],
-   boss:{name:"พ่อมดพหุนาม",sprite:"🧙",title:"จอมเวทแยกตัวประกอบ"}},
+   boss:{name:"พ่อมดพหุนาม",sprite:"boss_w5",title:"จอมเวทแยกตัวประกอบ"}},
   {id:"w6",name:"ทะเลฟังก์ชัน",icon:"🌊",color:"#06b6d4",dark:"#083344",stages:["R","S","T"],
-   boss:{name:"คราเคนกราฟ",sprite:"🐙",title:"อสูรใต้สมุทร"}},
+   boss:{name:"คราเคนกราฟ",sprite:"boss_w6",title:"อสูรใต้สมุทร"}},
   {id:"w7",name:"ตลาดโชคชะตา",icon:"🎪",color:"#f59e0b",dark:"#451a03",stages:["U","V"],
-   boss:{name:"เจ้ามือลูกเต๋า",sprite:"🎲",title:"นักพนันแห่งความน่าจะเป็น"}},
+   boss:{name:"เจ้ามือลูกเต๋า",sprite:"boss_w7",title:"นักพนันแห่งความน่าจะเป็น"}},
   {id:"w8",name:"ปราสาทเรขาคณิต",icon:"🏰",color:"#f43f5e",dark:"#4c0519",stages:["W","X"],
-   boss:{name:"อัศวินตรีโกณ",sprite:"🤺",title:"ผู้เฝ้าประตูปราสาท"}},
+   boss:{name:"อัศวินตรีโกณ",sprite:"boss_w8",title:"ผู้เฝ้าประตูปราสาท"}},
   {id:"w9",name:"บัลลังก์ Z",icon:"⚡",color:"#fbbf24",dark:"#1c1917",stages:["Y","Z"],
    boss:{name:"ครูแฟล็ก ร่างเดือด",sprite:null,title:"บอสใหญ่แห่งดินแดนคณิตศาสตร์",final:true}}
 ];
@@ -110,4 +110,5 @@ const FINAL_VICTORY=[
 const HERO_TITLES=[[1,"นักผจญภัยฝึกหัด"],[5,"นักสู้ตัวเลข"],[10,"อัศวินสมการ"],[18,"จอมเวทคณิต"],[26,"ผู้พิชิตดินแดน"],[35,"ตำนานนักคณิตศาสตร์"]];
 const heroTitle=lvl=>{let t=HERO_TITLES[0][1];HERO_TITLES.forEach(([m,n])=>{if(lvl>=m)t=n});return t};
 
-const AVATARS=["🧑‍🎓","👩‍🎓","🧙","🧝","🦸","🥷","🧑‍🚀","🤴","👸","🐱","🦊","🐼","🐯","🐸","🐲","🤖"];
+// ตัวละครผู้เล่นเป็นภาพพิกเซลใน js/sprites.js (HERO_CLASSES)
+const AVATARS=HERO_KEYS;

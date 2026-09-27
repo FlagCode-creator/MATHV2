@@ -55,19 +55,20 @@ function renderTitle(){
   const last=(function(){try{return localStorage.getItem(LAST_PLAYER_KEY)}catch(e){return null}})();
   const lastSave=last&&loadSave_(last);
   $("continue-box").classList.toggle("hidden",!lastSave);
-  if(lastSave)$("continue-btn").textContent=`▶ เล่นต่อ: ${lastSave.avatar} ${lastSave.name} (Lv.${lastSave.level})`;
+  if(lastSave)$("continue-btn").textContent=`▶ เล่นต่อ: ${lastSave.name} (Lv.${lastSave.level})`;
   const saves=listSaves_();
   $("saves-box").classList.toggle("hidden",saves.length<2);
   $("saves-list").innerHTML=saves.map(s=>`<div class="save-row">
-    <button type="button" class="pick" onclick="startWithSave('${esc(s.playerId)}')"><span class="av">${esc(s.avatar)}</span><span><b>${esc(s.name)}</b><small>Lv.${s.level} · ⭐ ${totalStars_(s)} · ${s.studentId?"บัญชีนักเรียน":"ผู้เยี่ยมชม"}</small></span></button>
+    <button type="button" class="pick" onclick="startWithSave('${esc(s.playerId)}')"><span class="av">${heroImg(s.avatar,40)}</span><span><b>${esc(s.name)}</b><small>Lv.${s.level} · ⭐ ${totalStars_(s)} · ${s.studentId?"บัญชีนักเรียน":"ผู้เยี่ยมชม"}</small></span></button>
     <button type="button" class="del" title="ลบเซฟ" onclick="deleteSaveFromTitle('${esc(s.playerId)}')">×</button></div>`).join("");
+  $("title-parade").innerHTML=["A","F","J","Q","S","Z"].map((k,i)=>`<span style="animation-delay:${i*0.2}s">${spriteImg(k,44)}</span>`).join("");
   showTitleForm("menu");
   showScreen("title");
 }
 function renderAvatarGrid_(elId,selected,onPick){
   const grid=$(elId);grid.innerHTML="";
   AVATARS.forEach(a=>{
-    const b=document.createElement("button");b.type="button";b.textContent=a;
+    const b=document.createElement("button");b.type="button";b.innerHTML=heroImg(a,36);b.title=HERO_CLASSES[a].name;
     if(a===selected)b.className="sel";
     b.onclick=()=>{SFX.click();onPick(a)};
     grid.appendChild(b);
@@ -123,7 +124,7 @@ function switchPlayer(){save=null;renderTitle()}
 /* Map                                                                     */
 /* ====================================================================== */
 function renderHud_(){
-  $("hud-avatar").textContent=save.avatar;
+  $("hud-avatar").innerHTML=heroImg(save.avatar,44);
   $("hud-name").textContent=save.name;
   $("hud-title").textContent=heroTitle(save.level);
   $("hud-level").textContent="LV."+save.level;
@@ -150,10 +151,10 @@ function goMap(){
       const st=save.stages[id],ok=stageUnlocked_(save,id),done=stageCleared_(save,id);
       const cls=done?"cleared":ok?"available":"locked";
       nodes+=(i?`<span class="node-link"></span>`:"")+`<button type="button" class="node ${cls}" ${ok?`onclick="openPreview('stage','${id}')"`:"disabled"} title="${esc(TOPICS[id])}">
-        <span class="n-sprite">${ok?MONSTERS[id].sprite:"🔒"}</span><span class="n-id">${id}</span>${done?`<span class="n-stars">${starsStr_(st.stars)}</span>`:""}</button>`;
+        <span class="n-sprite">${ok?spriteImg(MONSTERS[id].sprite,40):"🔒"}</span><span class="n-id">${id}</span>${done?`<span class="n-stars">${starsStr_(st.stars)}</span>`:""}</button>`;
     });
     const bOk=bossUnlocked_(save,wi),bDone=bossCleared_(save,wi),bs=save.bosses[w.id];
-    const bossSprite=w.boss.final?`<img class="pixelated" src="${mascotSrc(bDone?"celebrate":"furious")}" alt="">`:`<span class="n-sprite">${w.boss.sprite}</span>`;
+    const bossSprite=w.boss.final?`<img class="pixelated" src="${mascotSrc(bDone?"celebrate":"furious")}" alt="">`:`<span class="n-sprite">${spriteImg(w.boss.sprite,52)}</span>`;
     nodes+=`<span class="node-link"></span><button type="button" class="node boss ${bDone?"cleared":bOk?"available":"locked"}" ${bOk?`onclick="openPreview('boss',${wi})"`:"disabled"} title="บอส: ${esc(w.boss.name)}">
       ${bOk?bossSprite:`<span class="n-sprite">🔒</span>`}${bDone?`<span class="n-stars">${starsStr_(bs.stars)}</span>`:""}</button>`;
     el.innerHTML=`<div class="world-head"><div><span class="world-num">WORLD ${wi+1}</span><h3>${w.icon} ${esc(w.name)}</h3><small>${unlocked?w.stages.map(id=>id+" "+TOPICS[id]).join(" · "):"🔒 ชนะบอสดินแดนก่อนหน้าเพื่อปลดล็อก"}</small></div>
@@ -171,13 +172,13 @@ function openPreview(kind,ref){
   let html="";
   if(kind==="stage"){
     const m=MONSTERS[ref],s=monsterStats(ref),st=save.stages[ref],wi=worldOfStage(ref);
-    html=`<p class="pixel-label">WORLD ${wi+1} · STAGE ${ref}</p><div class="preview-sprite">${m.sprite}</div>
+    html=`<p class="pixel-label">WORLD ${wi+1} · STAGE ${ref}</p><div class="preview-sprite">${spriteImg(m.sprite,128)}</div>
       <h2 class="preview-name">${esc(m.name)}</h2><p class="preview-sub">หัวข้อ: ${esc(TOPICS[ref])}</p>
       <div class="preview-stats"><span class="chip">❤️ ${s.hp}</span><span class="chip">⚔️ ${s.atk}</span><span class="chip">🪙 ~${Math.round(s.gold*(st?0.6:1.5))}</span><span class="chip">✨ ${Math.round(s.xp*(st?0.6:1))} EXP</span></div>
       ${st?`<p class="preview-sub" style="margin-top:8px">ดาวที่ได้: ${starsStr_(st.stars)} · ชนะแล้ว ${st.clears} ครั้ง (รอบนี้โจทย์ยากขึ้น)</p>`:""}`;
   }else{
     const w=WORLDS[ref],s=bossStats(ref),bs=save.bosses[w.id];
-    const sprite=w.boss.final?`<img class="pixelated" src="${mascotSrc("furious")}" alt="">`:w.boss.sprite;
+    const sprite=w.boss.final?`<img class="pixelated" src="${mascotSrc("furious")}" alt="">`:spriteImg(w.boss.sprite,150);
     html=`<p class="pixel-label">BOSS · ${esc(w.name)}</p><div class="preview-sprite">${sprite}</div>
       <h2 class="preview-name">${esc(w.boss.name)}</h2><p class="preview-sub">${esc(w.boss.title)}</p>
       <p class="preview-sub">โจทย์ผสม: ${w.boss.final?"ทุกหัวข้อ A–Y":w.stages.map(id=>TOPICS[id]).join(", ")}</p>
@@ -213,7 +214,7 @@ async function startBattle(kind,ref){
   $("enemy-box").style.setProperty("--wc",WORLDS[wi].color);
   $("enemy-box").classList.remove("enraged");
   $("battle-label").textContent=kind==="stage"?`${WORLDS[wi].icon} STAGE ${ref} · ${TOPICS[ref]}`:`${WORLDS[wi].icon} BOSS · ${WORLDS[wi].name}`;
-  $("player-avatar").textContent=save.avatar;
+  $("player-avatar").innerHTML=heroImg(save.avatar,52);
   $("player-name").textContent=`${save.name} Lv.${lvl}`;
   $("enemy-sprite").className="enemy-sprite";
   renderEnemySprite_();
@@ -229,7 +230,7 @@ async function startBattle(kind,ref){
 }
 function renderEnemySprite_(){
   const e=B.enemy,el=$("enemy-sprite");
-  el.innerHTML=e.img?`<img class="pixelated" src="${e.img}" alt="${esc(e.name)}">`:e.sprite;
+  el.innerHTML=e.img?`<img class="pixelated" src="${e.img}" alt="${esc(e.name)}">`:spriteImg(e.sprite,B.kind==="boss"?168:136);
 }
 function updateBattleHud_(){
   const e=B.enemy,p=B.player;
@@ -571,7 +572,7 @@ function buyItem(k){
 function openHero(){
   SFX.click();
   const s=save.stats,total=s.correct+s.wrong;
-  $("hero-avatar").textContent=save.avatar;
+  $("hero-avatar").innerHTML=heroImg(save.avatar,72);
   $("hero-name").textContent=save.name;
   $("hero-title").textContent=`Lv.${save.level} · ${heroTitle(save.level)}`;
   $("hero-account").textContent=save.studentId?`บัญชีนักเรียน: ${save.studentId}`:"ผู้เยี่ยมชม (เซฟอยู่ในเครื่องนี้เท่านั้น)";
@@ -583,7 +584,7 @@ function openHero(){
     cell("🔥 คอมโบสูงสุด",s.bestCombo),cell("💥 คริติคอล",s.crits),
     cell("👑 ปราบบอส",s.bossKills),cell("🗺️ ดินแดนที่กู้คืน",`${WORLDS.filter((w,i)=>bossCleared_(save,i)).length}/${WORLDS.length}`)
   ].join("");
-  renderAvatarGrid_("hero-avatars",save.avatar,function pick(a){save.avatar=a;persist();$("hero-avatar").textContent=a;renderAvatarGrid_("hero-avatars",a,pick)});
+  renderAvatarGrid_("hero-avatars",save.avatar,function pick(a){save.avatar=a;persist();$("hero-avatar").innerHTML=heroImg(a,72);renderAvatarGrid_("hero-avatars",a,pick)});
   showScreen("hero");
 }
 function resetProgress(){

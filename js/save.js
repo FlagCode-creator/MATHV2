@@ -6,7 +6,7 @@ const LAST_PLAYER_KEY="mq2_last_player";
 function saveKey_(playerId){return "mq2_save_"+playerId}
 function newSave_(playerId,name,avatar,studentId){
   return {
-    version:SAVE_VERSION,playerId,name,avatar:avatar||AVATARS[0],studentId:studentId||null,
+    version:SAVE_VERSION,playerId,name,avatar:heroKey(avatar),studentId:studentId||null,
     level:1,xp:0,gold:60,
     items:{potion:2,shield:0,fifty:1,time:1},
     stages:{},   // {A:{stars:3,clears:2}}
@@ -22,7 +22,7 @@ function loadSave_(playerId){
     const s=JSON.parse(raw);
     // เติมฟิลด์ที่อาจขาด (กันเซฟเก่าพังเมื่อเพิ่มฟีเจอร์)
     const base=newSave_(playerId,s.name,s.avatar,s.studentId);
-    return {...base,...s,items:{...base.items,...(s.items||{})},stats:{...base.stats,...(s.stats||{})},stages:s.stages||{},bosses:s.bosses||{}};
+    return {...base,...s,avatar:heroKey(s.avatar),items:{...base.items,...(s.items||{})},stats:{...base.stats,...(s.stats||{})},stages:s.stages||{},bosses:s.bosses||{}};
   }catch(e){return null}
 }
 function writeSave_(save){
