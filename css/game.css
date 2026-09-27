@@ -253,3 +253,12 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
   .avatar-grid{grid-template-columns:repeat(6,1fr)}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---- ฉากหลังพิกเซลของแต่ละดินแดน (js/backgrounds.js) ---- */
+.enemy-stage,.world-head,.preview-sprite,.title-scene{background-size:cover;background-position:center bottom;image-rendering:pixelated;image-rendering:crisp-edges}
+.enemy-stage{margin-top:8px;border:3px solid #070a1c;border-radius:12px;align-items:flex-end;padding-bottom:10px;overflow:hidden}
+.enemy-stage::after{bottom:6px}
+.world-head{background-image:linear-gradient(90deg,rgba(7,10,28,.85),rgba(7,10,28,.35) 70%,rgba(7,10,28,.15)),var(--bg);min-height:92px;align-items:flex-end;text-shadow:0 2px 0 #000}
+.preview-sprite{border:3px solid #070a1c;border-radius:12px;padding:18px 0 8px;margin:6px 0}
+.title-scene{border:3px solid var(--line);border-radius:16px;margin-top:14px;padding:10px 0 12px;box-shadow:0 5px 0 #070a1c}
+.title-scene .title-mascot{margin-top:4px}

@@ -61,6 +61,8 @@ function renderTitle(){
   $("saves-list").innerHTML=saves.map(s=>`<div class="save-row">
     <button type="button" class="pick" onclick="startWithSave('${esc(s.playerId)}')"><span class="av">${heroImg(s.avatar,40)}</span><span><b>${esc(s.name)}</b><small>Lv.${s.level} · ⭐ ${totalStars_(s)} · ${s.studentId?"บัญชีนักเรียน":"ผู้เยี่ยมชม"}</small></span></button>
     <button type="button" class="del" title="ลบเซฟ" onclick="deleteSaveFromTitle('${esc(s.playerId)}')">×</button></div>`).join("");
+  const reached=saves.reduce((m,s)=>{const i=WORLDS.findIndex((w,wi)=>!worldUnlocked_(s,wi+1));return Math.max(m,i<0?WORLDS.length-1:i)},0);
+  $("title-scene").style.backgroundImage=`url(${bgURL(Math.max(0,reached))})`;
   $("title-parade").innerHTML=["A","F","J","Q","S","Z"].map((k,i)=>`<span style="animation-delay:${i*0.2}s">${spriteImg(k,44)}</span>`).join("");
   showTitleForm("menu");
   showScreen("title");
@@ -145,7 +147,7 @@ function goMap(){
     const cleared=w.stages.filter(id=>stageCleared_(save,id)).length+(bossCleared_(save,wi)?1:0);
     const el=document.createElement("div");
     el.className="world"+(unlocked?"":" locked");
-    el.style.setProperty("--wc",w.color);el.style.setProperty("--wd",w.dark);
+    el.style.setProperty("--wc",w.color);el.style.setProperty("--wd",w.dark);el.style.setProperty("--bg",`url(${bgURL(wi)})`);
     let nodes="";
     w.stages.forEach((id,i)=>{
       const st=save.stages[id],ok=stageUnlocked_(save,id),done=stageCleared_(save,id);
@@ -172,14 +174,14 @@ function openPreview(kind,ref){
   let html="";
   if(kind==="stage"){
     const m=MONSTERS[ref],s=monsterStats(ref),st=save.stages[ref],wi=worldOfStage(ref);
-    html=`<p class="pixel-label">WORLD ${wi+1} · STAGE ${ref}</p><div class="preview-sprite">${spriteImg(m.sprite,128)}</div>
+    html=`<p class="pixel-label">WORLD ${wi+1} · STAGE ${ref}</p><div class="preview-sprite" style="background-image:url(${bgURL(wi)})">${spriteImg(m.sprite,128)}</div>
       <h2 class="preview-name">${esc(m.name)}</h2><p class="preview-sub">หัวข้อ: ${esc(TOPICS[ref])}</p>
       <div class="preview-stats"><span class="chip">❤️ ${s.hp}</span><span class="chip">⚔️ ${s.atk}</span><span class="chip">🪙 ~${Math.round(s.gold*(st?0.6:1.5))}</span><span class="chip">✨ ${Math.round(s.xp*(st?0.6:1))} EXP</span></div>
       ${st?`<p class="preview-sub" style="margin-top:8px">ดาวที่ได้: ${starsStr_(st.stars)} · ชนะแล้ว ${st.clears} ครั้ง (รอบนี้โจทย์ยากขึ้น)</p>`:""}`;
   }else{
     const w=WORLDS[ref],s=bossStats(ref),bs=save.bosses[w.id];
     const sprite=w.boss.final?`<img class="pixelated" src="${mascotSrc("furious")}" alt="">`:spriteImg(w.boss.sprite,150);
-    html=`<p class="pixel-label">BOSS · ${esc(w.name)}</p><div class="preview-sprite">${sprite}</div>
+    html=`<p class="pixel-label">BOSS · ${esc(w.name)}</p><div class="preview-sprite" style="background-image:url(${bgURL(ref)})">${sprite}</div>
       <h2 class="preview-name">${esc(w.boss.name)}</h2><p class="preview-sub">${esc(w.boss.title)}</p>
       <p class="preview-sub">โจทย์ผสม: ${w.boss.final?"ทุกหัวข้อ A–Y":w.stages.map(id=>TOPICS[id]).join(", ")}</p>
       <div class="preview-stats"><span class="chip">❤️ ${s.hp}</span><span class="chip">⚔️ ${s.atk}</span><span class="chip">🪙 ${bs?Math.round(s.gold*0.5):s.gold}</span><span class="chip">${s.phases} ร่าง</span></div>
@@ -213,6 +215,7 @@ async function startBattle(kind,ref){
   document.documentElement.style.setProperty("--wc",WORLDS[wi].color);
   $("enemy-box").style.setProperty("--wc",WORLDS[wi].color);
   $("enemy-box").classList.remove("enraged");
+  $("enemy-stage").style.backgroundImage=`url(${bgURL(wi)})`;
   $("battle-label").textContent=kind==="stage"?`${WORLDS[wi].icon} STAGE ${ref} · ${TOPICS[ref]}`:`${WORLDS[wi].icon} BOSS · ${WORLDS[wi].name}`;
   $("player-avatar").innerHTML=heroImg(save.avatar,52);
   $("player-name").textContent=`${save.name} Lv.${lvl}`;

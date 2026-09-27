@@ -14,7 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
 <!-- ?v= คือเลขเวอร์ชันไฟล์: service worker ของเว็บหลักแคชไฟล์ .css/.js แบบ cache-first
      แก้ไฟล์ไหนแล้วให้เพิ่มเลข ?v= ของไฟล์นั้น ผู้เล่นจะได้โหลดไฟล์ใหม่ทันที -->
-<link rel="stylesheet" href="css/game.css?v=2">
+<link rel="stylesheet" href="css/game.css?v=3">
 </head>
 <body>
 <div id="app">
@@ -25,8 +25,10 @@
    <p class="pixel-label">KRU FLAG PRESENTS</p>
    <h1 class="logo">MATH<br>QUEST</h1>
    <p class="logo-sub">ผจญภัยดินแดนคณิตศาสตร์ · V2</p>
-   <img class="title-mascot pixelated" src="assets/mascot/welcome.png" alt="ครูแฟล็ก">
-   <div id="title-parade" class="parade"></div>
+   <div id="title-scene" class="title-scene">
+    <img class="title-mascot pixelated" src="assets/mascot/welcome.png" alt="ครูแฟล็ก">
+    <div id="title-parade" class="parade"></div>
+   </div>
 
    <div class="panel title-panel">
     <div id="continue-box" class="hidden">
@@ -226,9 +228,10 @@
 <script src="js/util.js?v=1"></script>
 <script src="js/questions.js?v=1"></script>
 <script src="js/sprites.js?v=1"></script>
+<script src="js/backgrounds.js?v=1"></script>
 <script src="js/data.js?v=2"></script>
 <script src="js/save.js?v=2"></script>
 <script src="js/audio.js?v=1"></script>
-<script src="js/game.js?v=2"></script>
+<script src="js/game.js?v=3"></script>
 </body>
 </html>
