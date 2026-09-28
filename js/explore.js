@@ -118,6 +118,7 @@ function buildBase_(){
     for(let y=0;y<X.H;y++)for(let x=0;x<X.W;x++){
       const ch=tileAt_(x,y);
       if(ch==="q"){c.drawImage(tallCanvas("bush",Math.floor(hash2_(x,y,5)*2)),x*TS,y*TS);continue}
+      if(ch==="G")continue;   // ประตูปริศนาวาดเป็นวัตถุแยก (มีแสงและแอนิเมชันเปิด)
       if(farmReady_()){   // รั้วและหีบจากชุด Farm RPG
         if(ch==="f"){drawFarmFence_(c,x,y,tileAt_);continue}
         if(ch==="c"||ch==="C"){c.drawImage(farmImg_("chest"),8,ch==="c"?3:19,16,16,x*TS,y*TS,16,16);continue}
@@ -148,6 +149,34 @@ function paintForest_(c){
     const big=hash2_(x,y,54)<0.7,src=big?[90,0,50,34]:[71,13,20,23],jx=Math.round((hash2_(x,y,55)-0.5)*10),jy=Math.round((hash2_(x,y,56)-0.5)*8);
     const dx=x*TS+8+jx-src[2]/2,dy=y*TS+10+jy-src[3]*0.7;
     c.drawImage(mapleCrop_(src[0],src[1],src[2],src[3],hash2_(x,y,57)<0.5),dx,dy)});
+}
+function drawStoneGate_(c,gx,y0,y1,gid,camX,camY,now,anim){
+  const e=save.explore,zone=(EXPLORE_MAPS.field.zones||[]).find(z=>z.gate===gid),ready=zone&&(e.kills[zone.stage]||0)>=QUEST_KILLS&&gid!=="gC"||gid==="gC"&&e.key;
+  const k=anim?Math.min(1,(now-anim.t0)/1100):0,sink=Math.round(k*k*30);
+  const x=gx*TS-camX,top=y0*TS-12-camY,H=(y1-y0+1)*TS+12,bottom=(y1+1)*TS-camY;
+  const R=(X2,Y2,W,H2,col)=>{c.fillStyle=col;c.fillRect(Math.round(X2),Math.round(Y2),W,H2)};
+  // เงา
+  c.fillStyle="rgba(0,0,0,.25)";c.fillRect(x+2,bottom-2,14,3);
+  c.save();c.beginPath();c.rect(x-4,top-8,26,bottom-top+8);c.clip();
+  const oy=sink;
+  // บานประตูหิน
+  R(x+1,top+oy,14,H,"#5e5549");R(x+2,top+1+oy,12,H-2,"#9a8f7c");R(x+2,top+1+oy,12,2,"#c9bea9");R(x+2,top+oy+H-4,12,2,"#6a6052");
+  for(let j=top+6;j<top+H-4;j+=7)R(x+2,j+oy,12,1,"#7d7263");
+  // อักษรเวทวงกลมกลางประตู
+  const glow=ready?`rgba(255,210,90,${0.55+0.35*Math.sin(now/220)})`:`rgba(255,70,70,${0.45+0.3*Math.sin(now/400)})`,cy=top+H/2+oy;
+  R(x+5,cy-6,6,1,glow);R(x+5,cy+5,6,1,glow);R(x+4,cy-5,1,10,glow);R(x+11,cy-5,1,10,glow);R(x+7,cy-3,2,6,glow);R(x+6,cy-1,4,2,glow);
+  if(ready||anim){c.globalCompositeOperation="lighter";const g=c.createRadialGradient(x+8,cy,0,x+8,cy,14);g.addColorStop(0,"rgba(255,200,80,.35)");g.addColorStop(1,"rgba(255,200,80,0)");c.fillStyle=g;c.fillRect(x-6,cy-14,28,28);c.globalCompositeOperation="source-over"}
+  c.restore();
+  // เสาหินสองข้าง (ไม่จม)
+  R(x-1,top-8,18,5,"#5e5549");R(x,top-7,16,3,"#c9bea9");R(x,top-5,16,1,"#9a8f7c");
+  if(anim&&Math.random()<0.5)dust_(gx*TS+2+Math.random()*12,(y1+1)*TS,1);
+}
+function drawBridgeBuild_(c,camX,camY,now){
+  const A=X.bridgeAnim,k=(now-A.t0)/1300;
+  A.cells.forEach(([bx,by],ci)=>{for(let p=0;p<4;p++){const idx=ci*4+p,appear=idx/(A.cells.length*4);if(k<appear)continue;
+    const drop=Math.max(0,1-(k-appear)*8),x=bx*TS+p*4-camX,y=by*TS-camY-Math.round(drop*10);
+    c.fillStyle="#c98a52";c.fillRect(x,y,1,16);c.fillStyle="#b86a3a";c.fillRect(x+1,y,1,16);c.fillStyle="#8a4428";c.fillRect(x+2,y,1,16);c.fillStyle="#3a1c10";c.fillRect(x+3,y,1,16);
+    if(drop>0&&drop<0.3)dust_(x+camX+2,by*TS+TS,1)}});
 }
 // ตำแหน่งภาพบ้าน: ประตูในภาพตรงกับช่องประตู (D) ของแผนที่ · บ้านลำดับคี่กลับด้าน
 function farmHouseRect_(h,i){
@@ -284,6 +313,14 @@ function drawExplore_(now){
       const pcx=p.fx*TS+8,pcy=p.fy*TS+4,behind=pcy<hy+60&&pcx>hx&&pcx<hx+hc.width&&p.fy<dy;   // เดินอยู่หลังบ้าน → บ้านโปร่งแสง
       if(behind)c.globalAlpha=0.5;c.drawImage(hc,hx-camX,hy-camY);c.globalAlpha=1}});
   });
+  // ประตูปริศนา: ประตูหินมีอักษรเวท (แดง = ยังปิดผนึก · ทอง = ไขได้แล้ว) · ตอนเปิดประตูจมลงดิน
+  Object.entries(X.m.gates||{}).forEach(([gid,g])=>{
+    const cells=g.cells.filter(([gx,gy])=>X.m.rows[gy][gx]==="G");if(!cells.length)return;
+    const anim=X.gateAnim&&X.gateAnim.gid===gid?X.gateAnim:null;if(save.explore.open[gid]&&!anim)return;
+    const gx=cells[0][0],y0=Math.min(...cells.map(c=>c[1])),y1=Math.max(...cells.map(c=>c[1]));
+    ents.push({y:y1+0.1,draw:()=>drawStoneGate_(c,gx,y0,y1,gid,camX,camY,now,anim)});
+  });
+  if(X.bridgeAnim)ents.push({y:-1,draw:()=>drawBridgeBuild_(c,camX,camY,now)});
   (X.m.labels||[]).forEach(l=>ents.push({y:l.y-0.6,draw:()=>{
     const bx=l.x*TS+1-camX,by=l.y*TS-9-camY;
     c.fillStyle="#4a2c18";c.fillRect(bx,by,14,10);c.fillStyle="#b87a48";c.fillRect(bx+1,by+1,12,8);c.fillStyle="#d49a60";c.fillRect(bx+1,by+1,12,1);
@@ -646,7 +683,11 @@ async function tryGate_(gid){
   else if(gid==="gE")ok=await askNumber({title:"👑 ประตูลานบอส",text:"ประตูสลักไว้ว่า: \"รหัสคือพื้นที่ของห้องหินโบราณในทุ่งนี้ (กี่ตารางหน่วย)\"",answer:40,hint:"เข้าไปในห้องหินโบราณ นับแผ่นหินตามแนวกว้างและแนวยาว แล้วนำมาคูณกัน (กว้าง × ยาว)"});
   if(!ok)return;
   e.open[gid]=true;persist();
-  buildBase_();SFX.levelUp();updateExHud_();
+  // แอนิเมชันเปิดประตู / วางไม้สะพานทีละแผ่น แล้วค่อยอัปเดตพื้น
+  X.busy=true;SFX.levelUp();
+  if(gid==="bridge"){X.bridgeAnim={t0:performance.now(),cells:X.m.gates.bridge.cells};await sleep(1500);X.bridgeAnim=null}
+  else{X.gateAnim={gid,t0:performance.now()};await sleep(1300);X.gateAnim=null}
+  X.busy=false;buildBase_();updateExHud_();
   const gold=40;save.gold+=gold;persist();updateExHud_();
   await exSay_([{mood:"celebrate",text:gid==="bridge"?`ซ่อมสะพานสำเร็จ! ข้ามแม่น้ำไป${nextZoneName_(zone.id)}ได้แล้ว (+🪙 ${gold})`:`ถูกต้อง! ประตูเปิดแล้ว ไปต่อที่${nextZoneName_(zone.id)}ได้เลย (+🪙 ${gold})`}]);
 }

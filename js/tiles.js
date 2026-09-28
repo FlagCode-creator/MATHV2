@@ -76,9 +76,21 @@ function paintGround_(buf,x,y,frame,T){
     water();
     const vertical=WATERY.has(T(x,y-1))&&WATERY.has(T(x,y+1));      // สะพานข้ามลำธารที่ไหลจากบนลงล่าง
     if(vertical){
-      if(broken){[[3,2,9],[10,5,8]].forEach(([i,j,h])=>{rect(i,j,3,h,"#b87a48");rect(i,j,1,h,"#d49a60");rect(i+3,j,1,h,"#6a4020")});rect(0,0,5,2,"#7a4a28");rect(11,14,5,2,"#7a4a28");return}
-      for(let i=0;i<16;i+=4){rect(i,2,3,12,"#b87a48");rect(i,2,1,12,"#d49a60");rect(i+3,2,1,12,"#6a4020");px(i+1,4,"#4a3020");px(i+1,11,"#4a3020")}
-      rect(0,0,16,2,"#7a4a28");rect(0,14,16,2,"#5a3420");rect(0,0,16,1,"#a0683a");
+      // สะพานไม้โทนเดียวกับรั้ว Farm RPG: แผ่นไม้ตั้ง 3px เว้นร่อง 1px · ราวสะพาน + เสามุม เฉพาะด้านที่ติดน้ำ · เงาบนน้ำ
+      const bridgeT=t=>t==="b"||t==="=",top=!bridgeT(T(x,y-1)),bot=!bridgeT(T(x,y+1));
+      const WOOD=["#a4552e","#8a4428","#b86a3a","#6e3420"];
+      for(let k=0;k<4;k++){const i0=k*4;
+        if(broken&&hash2_(x*4+k,y,77)<0.55){                  // แผ่นที่หายไป: เห็นน้ำ + ปลายไม้หัก
+          if(hash2_(x*4+k,y,79)<0.5){rect(i0,top?2:0,3,3,WOOD[0]);px(i0+1,(top?2:0)+3,WOOD[3]);px(i0,(top?2:0)+3,WOOD[0])}
+          continue}
+        for(let j=0;j<16;j++){const edge=j===0&&!top||j===15&&!bot;px(i0,j,"#c98a52");px(i0+1,j,WOOD[(k+x)%2?0:2]);px(i0+2,j,WOOD[1]);px(i0+3,j,"#3a1c10")}
+        if(hash2_(x*4+k,y,81)<0.5)px(i0+1,5+Math.floor(hash2_(x,k,83)*6),"#6e3420");   // ลายไม้
+        px(i0+1,top?3:1,"#2a1a10");px(i0+1,bot?12:14,"#2a1a10");                          // ตะปู
+      }
+      if(top){rect(0,0,16,2,"#6e3420");rect(0,0,16,1,"#c98a52");rect(0,2,16,1,"rgba(0,0,0,0)")}
+      if(bot){rect(0,14,16,2,"#5a2a18");rect(0,14,16,1,"#8a4428");for(let i=0;i<16;i++)if(!broken||i%3)px(i,13,"#2a4a7a")}
+      if(top&&x%1===0){const post=(i)=>{rect(i,0,3,4,"#5a2a18");rect(i,0,3,1,"#c98a52");px(i+1,1,"#e0a060")};if(!bridgeT(T(x-1,y))&&!WATERY.has(T(x-1,y)))post(0);if(!bridgeT(T(x+1,y))&&!WATERY.has(T(x+1,y)))post(13)}
+      if(bot){const post=(i)=>{rect(i,12,3,4,"#5a2a18");rect(i,12,3,1,"#c98a52")};if(!bridgeT(T(x-1,y))&&!WATERY.has(T(x-1,y)))post(0);if(!bridgeT(T(x+1,y))&&!WATERY.has(T(x+1,y)))post(13)}
       return;
     }
     if(broken){[[2,3,7],[9,10,6]].forEach(([i,j,w])=>{rect(i,j,w,3,"#b87a48");rect(i,j,w,1,"#d49a60");rect(i,j+3,w,1,"#6a4020")});rect(0,0,2,5,"#7a4a28");rect(14,11,2,5,"#7a4a28");return}
