@@ -92,6 +92,16 @@ function bustInfo(key){return bustOf_(portraitInfo(key))}
 function talkBust(key){return bustOf_(CUSTOM.talk[stripKey_(key)])}
 function expressionBust(key,mood){const s=CUSTOM.expressions[stripKey_(key)];return s&&s[mood]?bustOf_(s[mood]):null}
 function poseInfo(key,pose){const s=CUSTOM.poses[stripKey_(key)];return s&&s[pose]||null}
+// ครูแฟล็กชุดใหม่: expressions.npc_flag มี 7 หน้า → จับคู่กับอารมณ์เดิม 18 แบบ (ไฟล์ใน assets/mascot)
+const FLAG_MOOD={neutral:"neutral",hello:"neutral",wave:"neutral",
+  happy:"happy",excited:"happy",celebrate:"happy",welcome:"happy",shy:"happy",
+  explain:"explain",remind:"explain",homework:"explain",thinking:"thinking",confused:"thinking",
+  shocked:"surprised",sad:"sad",angry:"angry",furious:"angry",determined:"angry"};
+function flagExpressionURL(mood){
+  const set=CUSTOM.expressions.npc_flag;if(!set)return null;
+  const b=expressionBust("npc_flag",FLAG_MOOD[mood]||"neutral")||expressionBust("npc_flag","neutral");
+  return b?b.url:null;
+}
 // ภาพ <img> ที่พอดีกรอบ size×size โดยคงสัดส่วน · ภาพใหญ่ที่ถูกย่อใช้การย่อแบบนุ่ม ภาพเล็กที่ถูกขยายใช้แบบพิกเซลคม
 function fitImg_(info,size,cls){
   const s=Math.min(size/info.w,size/info.h),w=Math.round(info.w*s),h=Math.round(info.h*s);
