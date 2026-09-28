@@ -50,7 +50,7 @@ async function resumeExplore(){
   }
   if(pend&&pend.kill){
     const z=pend.kill,k=e.kills[z];
-    if(k===QUEST_KILLS)await exSay_([{mood:"happy",text:`ปราบ${MONSTERS[z].name}ครบ ${QUEST_KILLS} ตัวแล้ว! ตอนนี้ไปไขปริศนาเพื่อเปิดทางไป${nextZoneName_(z)}ได้เลย`}]);
+    if(k===QUEST_KILLS)await exSay_([{mood:"happy",text:`ปราบ${zoneMonName_(z)}ครบ ${QUEST_KILLS} ตัวแล้ว! ตอนนี้ไปไขปริศนาเพื่อเปิดทางไป${nextZoneName_(z)}ได้เลย`}]);
     else if(k<QUEST_KILLS)toast(`${ZONE_NAMES[z]}: ปราบแล้ว ${k}/${QUEST_KILLS}`);
   }
   if(pend&&pend.boss)await exSay_([{mood:"celebrate",text:"ปราบราชาสไลม์ตัวเลขได้แล้ว! ทุ่งหญ้าจำนวนกลับมาสงบสุข กลับไปรายงานครูที่หมู่บ้านนะ"}]);
@@ -77,7 +77,8 @@ function loadMap_(mapId,x,y,dir){
   X.ctx=X.canvas.getContext("2d");
   if(blocked_(x,y)&&!(m.warps||[]).some(w=>w.x===x&&w.y===y)){X.p.x=X.p.fx=m.spawn.x;X.p.y=X.p.fy=m.spawn.y;e.x=m.spawn.x;e.y=m.spawn.y}
   if(m.zones)m.zones.forEach(z=>z.monsters.forEach(([mx,my],i)=>{
-    X.mons.push({id:z.id+i,stage:z.stage,x:mx,y:my,fx:mx,fy:my,t:1,zone:z,next:performance.now()+rng(600,2000)});
+    X.mons.push({id:z.id+i,stage:z.stage,x:mx,y:my,fx:mx,fy:my,t:1,zone:z,next:performance.now()+rng(600,2000),
+      tiny:i%2?"blood":"demon",hue:(ZONE_MON[z.stage]||{}).hue||0});
   }));
   buildBase_();
   persist();
@@ -196,7 +197,7 @@ function updateMonsters_(now){
   updateNightMons_(now);
   X.mons.forEach(m=>{
     if(m.t<1){m.t=Math.min(1,(now-m.t0)/MON_STEP_MS);m.fx=m.sx+(m.x-m.sx)*m.t;m.fy=m.sy+(m.y-m.sy)*m.t;
-      if(m.t>=1&&!m.night&&monStyle_(MONSTERS[m.stage].sprite)==="hop")dust_(m.x*TS+8,m.y*TS+TS,3);return}
+      if(m.t>=1&&!m.night&&!m.tiny&&monStyle_(MONSTERS[m.stage].sprite)==="hop")dust_(m.x*TS+8,m.y*TS+TS,3);return}
     if(X.busy||now<m.next)return;
     m.next=now+rng(500,1300);
     if(Math.random()<0.25){if(Math.random()<0.6)m.flip=!m.flip;return}   // หยุดมองซ้าย-ขวา
@@ -240,7 +241,7 @@ function drawExplore_(now){
     c.font="7px sans-serif";c.textAlign="center";c.textBaseline="middle";c.fillText(l.icon,bx+7,by+5.5)}}));
   X.npcs.forEach(n=>ents.push({y:n.fy,draw:()=>{drawChar_(c,n.sprite,n.dir||"down",n.t<1?(n.step%2?1:2):0,n.fx,n.fy,camX,camY,n,now);grassOver_(c,n.fx,n.fy,camX,camY,now)}}));
   X.mons.forEach(m=>ents.push({y:m.fy,draw:()=>{
-    if(m.night){drawTinyMon_(c,m,camX,camY,now);return}
+    if(m.night||m.tiny){drawTinyMon_(c,m,camX,camY,now);return}
     const art=customSpriteInfo(MONSTERS[m.stage].sprite);
     if(art)drawArt_(c,art,Math.min(MON_ART_H,MON_ART_W*art.h/art.w),m.fx*TS+8-camX,m.fy*TS+TS-camY,m,!!m.flip,now,monStyle_(MONSTERS[m.stage].sprite));
     else drawSprite_(c,MONSTERS[m.stage].sprite,m.fx,m.fy,camX,camY,Math.floor(now/350+m.x)%2,m.flip);grassOver_(c,m.fx,m.fy,camX,camY,now)}}));
@@ -266,9 +267,10 @@ function drawExplore_(now){
 // ตัวละครที่มีภาพใหญ่ (portraits) → ใช้ภาพนั้นแบบย่อ เดินเด้งโยกซ้ายขวา · ไม่มีภาพ → ตัวเดินที่วาดด้วยโค้ด (16×32)
 const CHAR_ART_H=32,MON_ART_H=24,BOSS_ART_H=42,MON_ART_W=26,BOSS_ART_W=46;
 function drawChar_(c,spriteKey,dir,frame,fx,fy,camX,camY,ent,now){
-  if(MS_SHEETS[spriteKey]&&drawMsChar_(c,spriteKey,dir,fx,fy,camX,camY,ent,now||performance.now()))return;   // ชาวบ้านเดิน 4 ทิศ
-  const walk=walkFrame(spriteKey,dir,frame);   // มี sprite sheet เดิน 4 ทิศ → ใช้ท่าเดินจริง
+  const walk=walkFrame(spriteKey,dir,frame);   // มี sprite sheet เดิน 4 ทิศ (ภาพของครู) → ใช้ก่อน
   if(walk){drawArt_(c,walk,CHAR_ART_H,fx*TS+8-camX,fy*TS+TS-camY,ent,false,now||performance.now(),"sheet");return}
+  const ms=msKeyFor_(spriteKey);   // ตัวเดิน Mana Seed เดิน 4 ทิศจริง
+  if(ms&&drawMsChar_(c,ms,dir,fx,fy,camX,camY,ent,now||performance.now()))return;
   const art=portraitInfo(spriteKey);
   if(art){
     // หันซ้าย = กลับภาพ · หันขึ้น/ลง = คงด้านเดิมไว้ (ไม่ดีดกลับ)
@@ -441,7 +443,7 @@ function objective_(){
   for(const z of EXPLORE_MAPS.field.zones){
     if(e.open[z.gate])continue;
     const k=e.kills[z.stage];
-    if(k<QUEST_KILLS)return `${ZONE_NAMES[z.id]}: ปราบ${MONSTERS[z.stage].name} ${k}/${QUEST_KILLS}`;
+    if(k<QUEST_KILLS)return `${ZONE_NAMES[z.id]}: ปราบ${zoneMonName_(z.stage)} ${k}/${QUEST_KILLS}`;
     return {gA:"ไขประตูหิน — หาเลขบนแผ่นหิน 3 แผ่นในทุ่งบวกแล้วบวกกัน",bridge:"ซ่อมสะพาน — คุยกับลุงช่างไม้ริมแม่น้ำ",
             gC:e.key?"ใช้กุญแจเปิดประตูทางตะวันออกของทุ่งคูณ":"เปิดหีบรหัสในทุ่งคูณ (ถามลุงชาวสวน)",gD:"ไขประตูแบ่งเหรียญทางตะวันออกของทุ่งหาร",
             gE:"ไขรหัสประตูลานบอส — ดูห้องหินโบราณในทุ่งผสม"}[z.gate];
@@ -580,8 +582,8 @@ async function tryGate_(gid){
   const zone=EXPLORE_MAPS.field.zones.find(z=>z.gate===gid),k=e.kills[zone.stage],P=e.puz;
   const carpenter=X.npcs.find(n=>n.id==="carpenter");
   if(k<QUEST_KILLS){
-    const who=gid==="bridge"&&carpenter?say(carpenter,`ค้างคาวลบขโมยไม้ไปหมดเลย! ช่วยปราบ${MONSTERS[zone.stage].name}ให้ได้ ${QUEST_KILLS} ตัวก่อน (ตอนนี้ ${k}/${QUEST_KILLS})`)
-      :{mood:"remind",text:`ประตูนี้ถูกผนึกไว้ ต้องปราบ${MONSTERS[zone.stage].name}ใน${ZONE_NAMES[zone.id]}ให้ครบ ${QUEST_KILLS} ตัวก่อน (ตอนนี้ ${k}/${QUEST_KILLS})`};
+    const who=gid==="bridge"&&carpenter?say(carpenter,`ปีศาจลบขโมยไม้ไปหมดเลย! ช่วยปราบ${zoneMonName_(zone.stage)}ให้ได้ ${QUEST_KILLS} ตัวก่อน (ตอนนี้ ${k}/${QUEST_KILLS})`)
+      :{mood:"remind",text:`ประตูนี้ถูกผนึกไว้ ต้องปราบ${zoneMonName_(zone.stage)}ใน${ZONE_NAMES[zone.id]}ให้ครบ ${QUEST_KILLS} ตัวก่อน (ตอนนี้ ${k}/${QUEST_KILLS})`};
     return exSay_([who]);
   }
   let ok=false;
@@ -629,7 +631,8 @@ function startFieldBattle_(mon){
   X.pending={monster:mon.id,stage:mon.stage};
   SFX.charge();
   const e=save.explore;
-  const night=mon.night?{name:NIGHT_MON[mon.night].name,tiny:mon.night}:null;
+  const night=mon.night?{name:NIGHT_MON[mon.night].name,tiny:mon.night,strong:true}
+    :mon.tiny?{name:zoneMonName_(mon.stage,mon.tiny),tiny:mon.tiny,hue:mon.hue}:null;
   startBattle("stage",mon.stage,{origin:"explore",hp:e.hp,startSub:1+Math.min(4,e.kills[mon.stage]),enemy:night});
 }
 async function startBossBattle_(){

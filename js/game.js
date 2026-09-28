@@ -276,9 +276,9 @@ async function startBattle(kind,ref,opts){
   if(kind==="stage"){
     wi=worldOfStage(ref);const s=monsterStats(ref),m=MONSTERS[ref];
     enemy={name:m.name,sprite:m.sprite,img:null,hp:s.hp,maxHp:s.hp,atk:s.atk,gold:s.gold,xp:s.xp};
-    if(opts.enemy){   // ปีศาจกลางคืน: HP ×1.6 · โจมตี ×1.2 · เหรียญ ×2.5 · EXP ×2
-      const o=opts.enemy;enemy.name=o.name;enemy.sprite=null;enemy.tiny=o.tiny;
-      enemy.hp=enemy.maxHp=Math.round(s.hp*1.6);enemy.atk=Math.round(s.atk*1.2);enemy.gold=Math.round(s.gold*2.5);enemy.xp=Math.round(s.xp*2);
+    if(opts.enemy){   // มอนสเตอร์แบบมีแอนิเมชัน (Tiny RPG) · ปีศาจกลางคืน (strong): HP ×1.6 · โจมตี ×1.2 · เหรียญ ×2.5 · EXP ×2
+      const o=opts.enemy;enemy.name=o.name;enemy.sprite=null;enemy.tiny=o.tiny;enemy.hue=o.hue||0;
+      if(o.strong){enemy.hp=enemy.maxHp=Math.round(s.hp*1.6);enemy.atk=Math.round(s.atk*1.2);enemy.gold=Math.round(s.gold*2.5);enemy.xp=Math.round(s.xp*2)}
     }
   }else{
     wi=ref;const w=WORLDS[wi],s=bossStats(wi);phases=s.phases;
@@ -313,7 +313,7 @@ async function startBattle(kind,ref,opts){
 }
 function renderEnemySprite_(){
   const e=B.enemy,el=$("enemy-sprite");el._tiny=null;
-  if(e.tiny){tinyBattleStart_(el,e.tiny);return}
+  if(e.tiny){tinyBattleStart_(el,e.tiny,e.hue);return}
   el.innerHTML=e.img?`<img class="pixelated" src="${e.img}" alt="${esc(e.name)}">`:spriteImg(e.sprite,B.kind==="boss"?168:136);
 }
 // ภาพท่าของมอนสเตอร์/บอส (ถ้ามีใน manifest: poses) — attack · hurt ชั่วคราว · rage = ร่างคลั่ง (ใช้ถาวรจนจบการต่อสู้)

@@ -19,7 +19,8 @@ function drawMsChar_(c,key,dir,fx,fy,camX,camY,ent,now){
   if(dir==="left")flip=!flip;
   const x=Math.round(fx*TS+8-camX),y=Math.round(fy*TS+TS-camY);
   c.fillStyle="rgba(0,0,0,.26)";c.beginPath();c.ellipse(x,y-1,6,2.2,0,0,Math.PI*2);c.fill();
-  c.save();c.translate(x,y);if(flip)c.scale(-1,1);c.imageSmoothingEnabled=false;
+  const sc=MS_SCALE[key]||1;
+  c.save();c.translate(x,y);c.scale(flip?-sc:sc,sc);c.imageSmoothingEnabled=false;
   c.drawImage(img,cell*64,0,64,64,-32,-MS_FOOT-1,64,64);c.restore();
   return true;
 }
@@ -95,12 +96,12 @@ const NIGHT_STATE={day:-1,gone:{}};   // ปีศาจที่ถูกปร
 function tinyImg_(kind,anim){return packImg_(kind+"_"+anim)}
 // วาดบนแผนที่ (ขนาดจริง 1:1)
 function drawTinyMon_(c,m,camX,camY,now){
-  const anim=m.t<1?"walk":"idle",img=tinyImg_(m.night,anim);if(!img.complete||!img.naturalWidth)return;
-  const n=NIGHT_MON[m.night].frames[anim],f=Math.floor(now/(anim==="walk"?90:140))%n;
+  const kind=m.night||m.tiny,anim=m.t<1?"walk":"idle",img=tinyTinted_(kind,anim,m.hue||0);if(!img.width&&!img.naturalWidth)return;
+  const n=NIGHT_MON[kind].frames[anim],f=Math.floor(now/(anim==="walk"?90:140)+(m.x||0))%n;
   const x=Math.round(m.fx*TS+8-camX),y=Math.round(m.fy*TS+TS-camY);
   c.fillStyle="rgba(0,0,0,.3)";c.beginPath();c.ellipse(x,y-1,7,2.2,0,0,Math.PI*2);c.fill();
-  // แสงแดงเรือง ๆ ให้เห็นในความมืด
-  c.globalCompositeOperation="lighter";const g=c.createRadialGradient(x,y-10,0,x,y-10,16);g.addColorStop(0,"rgba(255,60,60,.28)");g.addColorStop(1,"rgba(255,60,60,0)");c.fillStyle=g;c.fillRect(x-16,y-26,32,32);c.globalCompositeOperation="source-over";
+  // ปีศาจกลางคืน: แสงแดงเรือง ๆ ให้เห็นในความมืด
+  if(m.night){c.globalCompositeOperation="lighter";const g=c.createRadialGradient(x,y-10,0,x,y-10,16);g.addColorStop(0,"rgba(255,60,60,.28)");g.addColorStop(1,"rgba(255,60,60,0)");c.fillStyle=g;c.fillRect(x-16,y-26,32,32);c.globalCompositeOperation="source-over"}
   c.save();c.translate(x,y);if(m.flip)c.scale(-1,1);c.imageSmoothingEnabled=false;
   c.drawImage(img,f*100,0,100,100,-TINY_CX,-TINY_FOOT-1,100,100);c.restore();
 }
@@ -121,16 +122,41 @@ function updateNightMons_(now){
 
 /* ---- ปีศาจในฉากต่อสู้: แอนิเมชันจริง (ยืน · โจมตี · โดนตี · ตาย) ---- */
 const TINY_CROP={x:22,y:22,w:62,h:40},TINY_SCALE=4.4;
-function tinyBattleStart_(el,kind){
+function tinyBattleStart_(el,kind,hue){
   el.innerHTML="";const cv=document.createElement("canvas");cv.width=TINY_CROP.w;cv.height=TINY_CROP.h;cv.className="tiny-mon";
   cv.style.width=Math.round(TINY_CROP.w*TINY_SCALE)+"px";cv.style.height=Math.round(TINY_CROP.h*TINY_SCALE)+"px";el.appendChild(cv);
-  const st={kind,anim:"idle",t0:performance.now(),cv};el._tiny=st;
+  const st={kind,hue:hue||0,anim:"idle",t0:performance.now(),cv};el._tiny=st;
   const tick=()=>{if(el._tiny!==st)return;const now=performance.now(),F=NIGHT_MON[kind].frames;let f=Math.floor((now-st.t0)/110);
     if(st.anim!=="idle"&&f>=F[st.anim]){if(st.anim==="death")f=F.death-1;else{st.anim="idle";st.t0=now;f=0}}
-    const img=tinyImg_(kind,st.anim),c=cv.getContext("2d");c.clearRect(0,0,cv.width,cv.height);
-    if(img.complete&&img.naturalWidth){c.save();c.translate(cv.width,0);c.scale(-1,1);c.imageSmoothingEnabled=false;   // หันหน้าเข้าหาผู้เล่น
+    const img=tinyTinted_(kind,st.anim,st.hue),c=cv.getContext("2d");c.clearRect(0,0,cv.width,cv.height);
+    if(img.width||img.naturalWidth){c.save();c.translate(cv.width,0);c.scale(-1,1);c.imageSmoothingEnabled=false;   // หันหน้าเข้าหาผู้เล่น
       c.drawImage(img,(f%F[st.anim])*100+(100-TINY_CROP.x-TINY_CROP.w),TINY_CROP.y,TINY_CROP.w,TINY_CROP.h,0,0,TINY_CROP.w,TINY_CROP.h);c.restore()}
     requestAnimationFrame(tick)};
   tick();
 }
 function tinyBattleAct_(el,anim){const st=el&&el._tiny;if(!st)return false;st.anim=anim;st.t0=performance.now();return true}
+
+/* ---- ตัวเดินของฮีโร่และ NPC (Mana Seed เปลี่ยนสีให้ตรงกับแต่ละตัวละคร) ---- */
+const MS_CHARS=new Set(["student_m","student_f","warrior","warrior_r","mage","mage_b","ninja","ninja_r","archer","archer_b","princess","prince",
+  "npc_flag","npc_shop","npc_inn","npc_kid","npc_carpenter","npc_farmer"]);
+MS_CHARS.forEach(k=>{MS_SHEETS["ms_"+k]=1});
+const MS_SCALE={ms_npc_kid:0.85};
+function msKeyFor_(k){if(!k)return null;if(MS_SHEETS[k])return k;const s=k.indexOf("hero:")===0?k.slice(5):k;return MS_CHARS.has(s)?"ms_"+s:null}
+
+/* ---- มอนสเตอร์ในทุ่ง: ปีศาจ/อสูรจากชุด Tiny RPG ย้อมสีตามทุ่ง ---- */
+const ZONE_MON={A:{hue:130,short:"บวก"},B:{hue:-75,short:"ลบ"},C:{hue:185,short:"คูณ"},D:{hue:35,short:"หาร"},E:{hue:0,short:"ผสม"}};
+const zoneMonName_=(stage,kind)=>((kind||"demon")==="demon"?"ปีศาจ":"อสูร")+(ZONE_MON[stage]?ZONE_MON[stage].short:"");
+const TINT={};
+// เลื่อนสี (hue) เฉพาะส่วนที่มีสี · ส่วนสีเทา/ดำ/ขาวคงเดิม
+function tinyTinted_(kind,anim,hue){
+  const base=tinyImg_(kind,anim);if(!hue)return base;if(!base.complete||!base.naturalWidth)return base;
+  const key=kind+anim+hue;if(TINT[key])return TINT[key];
+  const cv=document.createElement("canvas");cv.width=base.naturalWidth;cv.height=base.naturalHeight;const c=cv.getContext("2d");c.drawImage(base,0,0);
+  const id=c.getImageData(0,0,cv.width,cv.height),d=id.data;
+  for(let i=0;i<d.length;i+=4){if(!d[i+3])continue;const r=d[i]/255,g=d[i+1]/255,b=d[i+2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,dl=mx-mn;
+    if(dl<0.12)continue;const s=l>0.5?dl/(2-mx-mn):dl/(mx+mn);let h=mx===r?((g-b)/dl)%6:mx===g?(b-r)/dl+2:(r-g)/dl+4;h=((h*60+hue)%360+360)%360;
+    const C=(1-Math.abs(2*l-1))*s,X2=C*(1-Math.abs((h/60)%2-1)),m=l-C/2;let rr,gg,bb;
+    if(h<60)[rr,gg,bb]=[C,X2,0];else if(h<120)[rr,gg,bb]=[X2,C,0];else if(h<180)[rr,gg,bb]=[0,C,X2];else if(h<240)[rr,gg,bb]=[0,X2,C];else if(h<300)[rr,gg,bb]=[X2,0,C];else [rr,gg,bb]=[C,0,X2];
+    d[i]=(rr+m)*255;d[i+1]=(gg+m)*255;d[i+2]=(bb+m)*255}
+  c.putImageData(id,0,0);return TINT[key]=cv;
+}
