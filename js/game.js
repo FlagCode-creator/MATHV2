@@ -106,7 +106,7 @@ function mascotSay(elId,line){
 /* ====================================================================== */
 /* Title / login                                                           */
 /* ====================================================================== */
-function renderTitle(){
+function renderTitle(refreshOnly){
   const tm=document.querySelector(".title-mascot");if(tm)tm.src=mascotSrc("welcome");
   const last=(function(){try{return localStorage.getItem(LAST_PLAYER_KEY)}catch(e){return null}})();
   const lastSave=last&&loadSave_(last);
@@ -120,6 +120,10 @@ function renderTitle(){
   const reached=saves.reduce((m,s)=>{const i=WORLDS.findIndex((w,wi)=>!worldUnlocked_(s,wi+1));return Math.max(m,i<0?WORLDS.length-1:i)},0);
   $("title-scene").style.backgroundImage=`url(${bgURL(Math.max(0,reached))})`;
   $("title-parade").innerHTML=["A","F","J","Q","S","Z"].map((k,i)=>`<span style="animation-delay:${i*0.2}s">${spriteImg(k,44)}</span>`).join("");
+  if(refreshOnly){   // โหลดภาพเสร็จทีหลัง: อัปเดตภาพอย่างเดียว ไม่รีเซ็ตฟอร์มที่ผู้เล่นเปิดอยู่
+    if(!$("guest-form").classList.contains("hidden"))showTitleForm("guest");
+    return;
+  }
   showTitleForm("menu");
   showScreen("title");
 }
@@ -284,8 +288,10 @@ async function startBattle(kind,ref,opts){
   updateBattleHud_();
   $("q-answers").innerHTML="";$("q-text").textContent="";$("q-feedback").classList.add("hidden");
   $("q-diagram").classList.add("hidden");$("q-hint").classList.add("hidden");$("charge-warning").classList.add("hidden");
-  showScreen("battle");
+  await battleTransition_();          // จอแตกเป็นแถบ แล้วเปิดเข้าฉากสู้
+  showScreen("battle");battleTransitionOut_();
   if(kind==="boss"){
+    await bossBanner_(enemy.name,enemy.title||(WORLDS[wi].boss&&WORLDS[wi].boss.title));
     if(enemy.final)await playDialog([FINAL_BOSS_PHASES[0]]);
     else if(!prevClears)await playDialog(LINES.bossIntro);
   }
@@ -468,7 +474,9 @@ function playerAct_(act){
 }
 async function playerAttack_(dmg,crit,interrupt){
   const e=B.enemy,sp=$("enemy-sprite");
+  if(crit)await critCutIn_(save.avatar);
   playerAct_("attack");await sleep(160);
+  attackFx_(heroKey(save.avatar),crit);if(crit)screenShake_();
   e.hp=Math.max(0,e.hp-dmg);
   (crit?SFX.crit:SFX.hit)();
   sp.classList.remove("hit");void sp.offsetWidth;sp.classList.add("hit");enemyAct_("hurt");
@@ -583,11 +591,11 @@ async function endBattle_(won){
   let gold=0,xp=0,worldCleared=false,finalCleared=false;
   const field=B.origin==="explore"&&B.kind==="stage";
   if(won&&field){
-    save.stats.wins++;$("enemy-sprite").classList.add("dead");SFX.win();
+    save.stats.wins++;enemyBurst_();$("enemy-sprite").classList.add("dead");SFX.win();
     gold=Math.round(e.gold*0.5)+stars*2;xp=Math.round(e.xp*0.8);
   }else if(won){
     save.stats.wins++;
-    $("enemy-sprite").classList.add("dead");
+    enemyBurst_();$("enemy-sprite").classList.add("dead");
     SFX.win();
     if(B.kind==="stage"){
       gold=Math.round(e.gold*(first?1.5:0.6))+stars*5;xp=Math.round(e.xp*(first?1:0.6));
@@ -703,4 +711,4 @@ function resetProgress(){
 updateSfxBtn_();
 bindExploreControls_();
 renderTitle();
-loadCustomAssets().then(()=>{if(CUSTOM.loaded&&!save)renderTitle()});
+loadCustomAssets().then(()=>{if(CUSTOM.loaded&&!save&&$("screen-title").classList.contains("active"))renderTitle(true)});

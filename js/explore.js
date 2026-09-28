@@ -157,6 +157,7 @@ function tryStep_(dir,now){
   if(bossAt_(nx,ny)){startBossBattle_();return}
   if(blocked_(nx,ny)||npcAt_(nx,ny)){p.bump=now;return}
   p.sx=p.x;p.sy=p.y;p.x=nx;p.y=ny;p.t0=now;p.t=0;p.step++;
+  dust_(p.sx*TS+8,p.sy*TS+TS,p.step%2?2:1);
 }
 function arrived_(){
   const p=X.p,e=save.explore;
@@ -182,19 +183,21 @@ $("ex-area").addEventListener("animationend",ev=>ev.currentTarget.classList.remo
 function updateNpcs_(now){
   X.npcs.forEach(n=>{
     if(n.t<1){n.t=Math.min(1,(now-n.t0)/260);n.fx=n.sx+(n.x-n.sx)*n.t;n.fy=n.sy+(n.y-n.sy)*n.t;return}
+    if(!n.wander&&!X.busy&&now>=n.next){n.next=now+rng(2500,5500);n.dir=pickOne(["down","down","left","right"]);return}   // ยืนเฉย ๆ ก็หันมองรอบตัว
     if(!n.wander||X.busy||now<n.next)return;
     n.next=now+rng(1800,4000);
     const dir=pickOne(Object.keys(DIRS)),[dx,dy]=DIRS[dir],nx=n.x+dx,ny=n.y+dy;n.dir=dir;
     if(Math.abs(nx-n.ox)>2||Math.abs(ny-n.oy)>1||blocked_(nx,ny)||npcAt_(nx,ny)||monAt_(nx,ny)||(nx===X.p.x&&ny===X.p.y))return;
-    n.sx=n.x;n.sy=n.y;n.x=nx;n.y=ny;n.t0=now;n.t=0;n.step++;
+    n.sx=n.x;n.sy=n.y;n.x=nx;n.y=ny;n.t0=now;n.t=0;n.step++;dust_(n.sx*TS+8,n.sy*TS+TS,1);
   });
 }
 function updateMonsters_(now){
   X.mons.forEach(m=>{
-    if(m.t<1){m.t=Math.min(1,(now-m.t0)/MON_STEP_MS);m.fx=m.sx+(m.x-m.sx)*m.t;m.fy=m.sy+(m.y-m.sy)*m.t;return}
+    if(m.t<1){m.t=Math.min(1,(now-m.t0)/MON_STEP_MS);m.fx=m.sx+(m.x-m.sx)*m.t;m.fy=m.sy+(m.y-m.sy)*m.t;
+      if(m.t>=1&&monStyle_(MONSTERS[m.stage].sprite)==="hop")dust_(m.x*TS+8,m.y*TS+TS,3);return}
     if(X.busy||now<m.next)return;
-    m.next=now+rng(700,1700);
-    if(Math.random()<0.3)return;
+    m.next=now+rng(500,1300);
+    if(Math.random()<0.25){if(Math.random()<0.6)m.flip=!m.flip;return}   // หยุดมองซ้าย-ขวา
     const dir=pickOne(Object.keys(DIRS)),[dx,dy]=DIRS[dir],nx=m.x+dx,ny=m.y+dy;
     if(!inZone_(m.zone,nx,ny)||blocked_(nx,ny)||npcAt_(nx,ny)||monAt_(nx,ny))return;
     if(nx===X.p.x&&ny===X.p.y){if(now>X.invulnUntil&&X.p.t>=1)startFieldBattle_(m);return}
@@ -236,15 +239,16 @@ function drawExplore_(now){
   X.npcs.forEach(n=>ents.push({y:n.fy,draw:()=>drawChar_(c,n.sprite,n.dir||"down",n.t<1?(n.step%2?1:2):0,n.fx,n.fy,camX,camY,n,now)}));
   X.mons.forEach(m=>ents.push({y:m.fy,draw:()=>{
     const art=customSpriteInfo(MONSTERS[m.stage].sprite);
-    if(art)drawArt_(c,art,Math.min(MON_ART_H,MON_ART_W*art.h/art.w),m.fx*TS+8-camX,m.fy*TS+TS-camY,m,!!m.flip,now);
+    if(art)drawArt_(c,art,Math.min(MON_ART_H,MON_ART_W*art.h/art.w),m.fx*TS+8-camX,m.fy*TS+TS-camY,m,!!m.flip,now,monStyle_(MONSTERS[m.stage].sprite));
     else drawSprite_(c,MONSTERS[m.stage].sprite,m.fx,m.fy,camX,camY,Math.floor(now/350+m.x)%2,m.flip)}}));
   const b=X.m.boss;
   if(b&&!save.explore.bossDone)ents.push({y:b.y,draw:()=>{
     const art=customSpriteInfo(b.sprite);
-    if(art){drawArt_(c,art,Math.min(BOSS_ART_H,BOSS_ART_W*art.h/art.w),b.x*TS+8-camX,b.y*TS+TS-camY,{x:b.x,y:b.y,t:1},false,now);return}
+    if(art){drawArt_(c,art,Math.min(BOSS_ART_H,BOSS_ART_W*art.h/art.w),b.x*TS+8-camX,b.y*TS+TS-camY,X.bossEnt||(X.bossEnt={x:b.x,y:b.y,t:1}),false,now,monStyle_(b.sprite));return}
     const cv2=spriteCanvas(b.sprite);c.drawImage(cv2,Math.round(b.x*TS+8-cv2.width/2-camX),Math.round(b.y*TS+TS-cv2.height-camY+(Math.floor(now/400)%2)))}});
   const moving=p.t<1;
   ents.push({y:p.fy,draw:()=>drawChar_(c,"hero:"+heroKey(save.avatar),p.dir,moving?(p.step%2?1:2):0,p.fx,p.fy,camX,camY,p,now)});
+  drawDust_(c,camX,camY,now);
   ents.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());
   // ป้าย "!" เหนือครูแฟล็กเมื่อมีเรื่องสำคัญ
   const f=X.npcs.find(n=>n.id==="flag");
@@ -257,9 +261,12 @@ function drawExplore_(now){
 const CHAR_ART_H=32,MON_ART_H=24,BOSS_ART_H=42,MON_ART_W=26,BOSS_ART_W=46;
 function drawChar_(c,spriteKey,dir,frame,fx,fy,camX,camY,ent,now){
   const walk=walkFrame(spriteKey,dir,frame);   // มี sprite sheet เดิน 4 ทิศ → ใช้ท่าเดินจริง
-  if(walk){drawArt_(c,walk,CHAR_ART_H,fx*TS+8-camX,fy*TS+TS-camY,ent,false,now||performance.now());return}
+  if(walk){drawArt_(c,walk,CHAR_ART_H,fx*TS+8-camX,fy*TS+TS-camY,ent,false,now||performance.now(),"sheet");return}
   const art=portraitInfo(spriteKey);
-  if(art){drawArt_(c,art,CHAR_ART_H,fx*TS+8-camX,fy*TS+TS-camY,ent,dir==="left",now||performance.now());return}
+  if(art){
+    // หันซ้าย = กลับภาพ · หันขึ้น/ลง = คงด้านเดิมไว้ (ไม่ดีดกลับ)
+    const flip=dir==="left"?true:dir==="right"?false:!!(ent&&ent._flip);
+    drawArt_(c,art,CHAR_ART_H,fx*TS+8-camX,fy*TS+TS-camY,ent,flip,now||performance.now(),"walk",dir);return}
   const key=charKeyFor(spriteKey);
   if(!key){drawSprite_(c,spriteKey,fx,fy,camX,camY,0,false);return}
   const cv=charFrame(key,dir,frame);
@@ -278,16 +285,62 @@ function miniArt_(info,h,P){
   const oc=out.getContext("2d");oc.imageSmoothingEnabled=H<sh;oc.imageSmoothingQuality="high";oc.drawImage(src,0,0,out.width,out.height);
   return info.mini[k]=out;
 }
-// วาดภาพย่อ: เท้าอยู่ที่ (cx, footY) · เดิน = โยกซ้าย-ขวา + เด้งขึ้นทุกก้าว · ยืน = หายใจ
-function drawArt_(c,info,h,cx,footY,ent,flip,now){
+// ท่าขยับของมอนสเตอร์แต่ละแบบ: hop = กระโดดดึ๋ง · fly = ลอย+กระพือ · scuttle = วิ่งซอยเท้า · waddle = เดินโยก
+const MON_STYLE={A:"hop",C:"hop",F:"hop",L:"hop",boss_w1:"hop",
+  B:"fly",G:"fly",I:"fly",N:"fly",Q:"fly",R:"fly",S:"fly",T:"fly",Y:"fly",Z:"fly",boss_w6:"fly",boss_w3:"fly",
+  D:"scuttle",J:"scuttle",K:"scuttle"};
+const monStyle_=key=>MON_STYLE[key]||"waddle";
+// ฝุ่นใต้เท้า
+function dust_(x,y,n){if(!X)return;X.dust=X.dust||[];const now=performance.now();for(let i=0;i<(n||2);i++)X.dust.push({x:x+(Math.random()*8-4),y:y-1,vx:Math.random()*10-5,t0:now,life:380+Math.random()*200})}
+function drawDust_(c,camX,camY,now){
+  if(!X.dust||!X.dust.length)return;
+  X.dust=X.dust.filter(d=>now-d.t0<d.life);
+  X.dust.forEach(d=>{const k=(now-d.t0)/d.life;c.fillStyle=`rgba(236,222,190,${0.55*(1-k)})`;const r=1+k*2.4;
+    c.beginPath();c.arc(d.x+d.vx*k-camX,d.y-k*3-camY,r,0,Math.PI*2);c.fill()});
+}
+// วาดภาพย่อ: เท้าอยู่ที่ (cx, footY) · มีท่าหันตัว (พลิกภาพแบบการ์ด) · เดินเด้ง ยืด-ยุบ เอนตัวตามทิศ · ยืนหายใจ
+function drawArt_(c,info,h,cx,footY,ent,flip,now,style,dir){
   const P=X.px||2,mini=miniArt_(info,h,P),w=mini.width/P,hh=mini.height/P;
+  style=style||"walk";
   const t=ent&&ent.t!=null?ent.t:1,moving=t<1,ph=moving?Math.sin(t*Math.PI):0;
-  const side=((ent&&ent.step!=null?ent.step:ent?ent.x+ent.y:0)%2)?1:-1;
-  const rot=moving&&!info.walk?ph*0.11*side:0,bob=moving?ph*(info.walk?1:2):0;   // มีท่าเดินจริง → ไม่ต้องโยก
-  const breathe=moving?1:1+0.022*Math.sin(now/380+(ent?ent.x*1.7+ent.y:0));
-  const sx=Math.round(cx*P)/P,sy=Math.round(footY*P)/P;
-  c.fillStyle="rgba(0,0,0,.26)";c.beginPath();c.ellipse(sx,sy-1,Math.max(4,w*0.36)*(1-bob*0.06),2.2,0,0,Math.PI*2);c.fill();
-  c.save();c.translate(sx,sy-bob);c.rotate(rot);c.scale(flip?-1:1,breathe);
+  const seed=ent?(ent.x||0)*7.3+(ent.y||0)*3.1+(ent.id?String(ent.id).length:0):0;
+  const side=((ent&&ent.step!=null?ent.step:ent?(ent.x||0)+(ent.y||0):0)%2)?1:-1;
+  const hdir=ent&&ent.sx!=null&&moving?Math.sign(ent.x-ent.sx):0;
+  // ท่าหันตัว: ด้านเดิมหดเข้า แล้วด้านใหม่ขยายออก (170ms) · หันขึ้น/ลง = ย่อข้างสั้น ๆ
+  let face=flip?-1:1,turnK=1;
+  if(ent&&style!=="sheet"){
+    if(ent._flip===undefined){ent._flip=flip;ent._dir=dir}
+    if(flip!==ent._flip){ent._flip=flip;ent._turn=now}
+    if(dir&&dir!==ent._dir){ent._dir=dir;if(!ent._turn||now-ent._turn>170)ent._vturn=now}
+    if(ent._turn&&now-ent._turn<170){const k=(now-ent._turn)/170;turnK=k<.5?1-2*k:2*k-1;face=(k<.5?!flip:flip)?-1:1;turnK=0.12+turnK*0.88}
+    else if(ent._vturn&&now-ent._vturn<140){turnK=1-0.35*Math.sin((now-ent._vturn)/140*Math.PI)}
+  }
+  let bob=0,rot=0,sx=1,sy=1,lift=0,shadowK=1;
+  if(style==="sheet"){bob=moving?ph:0;sy=moving?1:1+0.02*Math.sin(now/380+seed)}
+  else if(style==="hop"){
+    if(moving){bob=ph*7;sy=1+ph*0.14;sx=1-ph*0.09;if(t<0.15||t>0.85){sy=0.9;sx=1.1}}
+    else{const cyc=((now/1000+seed*0.13)%1.8+1.8)%1.8;
+      if(cyc<0.4){const q=Math.sin(cyc/0.4*Math.PI);bob=q*3.5;sy=1+q*0.1;sx=1-q*0.07}
+      else if(cyc<0.52){const q=Math.sin((cyc-0.4)/0.12*Math.PI);sy=1-q*0.14;sx=1+q*0.1}
+      else{sy=1+0.03*Math.sin(now/260+seed);sx=1-0.02*Math.sin(now/260+seed)}}
+    shadowK=1-bob*0.05;
+  }else if(style==="fly"){
+    lift=5+Math.sin(now/280+seed)*2.5;sy=1+Math.sin(now/65+seed)*0.06;sx=1-Math.sin(now/65+seed)*0.03;
+    rot=moving?0.1*hdir:Math.sin(now/520+seed)*0.06;shadowK=0.75-Math.sin(now/280+seed)*0.08;
+  }else if(style==="scuttle"){
+    if(moving){rot=Math.sin(t*Math.PI*4)*0.13;bob=Math.abs(Math.sin(t*Math.PI*4))*1.6;sx=1.04}
+    else{const tw=Math.sin(now/900+seed)>0.7;rot=tw?Math.sin(now/45)*0.06:0;sy=1+0.025*Math.sin(now/300+seed)}
+  }else{ // walk (ตัวละคร) / waddle (มอนสเตอร์เดิน)
+    if(moving){bob=ph*(style==="walk"?3.5:3);rot=ph*0.12*side+0.08*hdir;
+      sy=1+ph*0.05;sx=1-ph*0.03;if(t<0.12||t>0.88){sy=0.93;sx=1.05}}
+    else{const br=Math.sin(now/380+seed);sy=1+0.024*br;sx=1-0.01*br}
+    shadowK=1-bob*0.05;
+  }
+  if(dir==="left"||dir==="right")sx*=0.92;        // มองจากด้านข้าง: ตัวแคบลงเล็กน้อย
+  if(dir==="up")sy*=0.97;
+  const px=Math.round(cx*P)/P,py=Math.round(footY*P)/P;
+  c.fillStyle="rgba(0,0,0,.26)";c.beginPath();c.ellipse(px,py-1,Math.max(4,w*0.36)*shadowK,2.2*shadowK,0,0,Math.PI*2);c.fill();
+  c.save();c.translate(px,py-bob-lift);c.rotate(rot);c.scale(face*sx*turnK,sy);
   c.imageSmoothingEnabled=true;c.drawImage(mini,-w/2,-hh,w,hh);c.restore();
 }
 function drawSprite_(c,key,fx,fy,camX,camY,bob,flip){

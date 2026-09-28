@@ -30,6 +30,8 @@ function playNoise_(dur,vol){
 }
 const SFX={
   click:()=>playNotes_([[660,0,.05,"square",.04]]),
+  transition:()=>playNotes_([[220,0,.06,"square",.05],[330,.06,.06,"square",.05],[440,.12,.06,"square",.05],[660,.18,.1,"square",.05],[880,.28,.14,"triangle",.05]]),
+  boss:()=>{playNoise_(.3,.08);playNotes_([[110,0,.25,"sawtooth",.06],[104,.28,.25,"sawtooth",.06],[98,.56,.45,"sawtooth",.07],[55,.56,.5,"square",.05]])},
   blip:()=>playNotes_([[500+Math.random()*160,0,.03,"square",.015]]),
   hit:()=>{playNoise_(.12,.1);playNotes_([[220,0,.08,"square",.06],[330,.04,.08,"square",.05]])},
   crit:()=>{playNoise_(.18,.14);playNotes_([[523,0,.07,"square",.07],[784,.06,.07,"square",.07],[1046,.12,.12,"square",.07]])},
