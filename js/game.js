@@ -292,7 +292,9 @@ async function startBattle(kind,ref,opts){
   document.documentElement.style.setProperty("--wc",WORLDS[wi].color);
   $("enemy-box").style.setProperty("--wc",WORLDS[wi].color);
   $("enemy-box").classList.remove("enraged");
-  $("enemy-stage").style.backgroundImage=`url(${bgURL(wi)})`;
+  // โหมดผจญภัยตอนกลางคืน → ฉากต่อสู้กลางคืน
+  const nightBg=B.origin==="explore"&&wi===0&&typeof dayLight_==="function"&&dayLight_(dayPhase_(performance.now())).dark>=0.3&&typeof farmReady_==="function"&&farmReady_();
+  $("enemy-stage").style.backgroundImage=`url(${nightBg?farmBattleBg_(true):bgURL(wi)})`;
   $("battle-flee").textContent=B.origin==="explore"?"🏃 ถอย":"🏃 หนี";
   $("battle-label").textContent=B.origin==="explore"&&kind==="stage"?`🧭 ${TOPICS[ref]}`:kind==="stage"?`${WORLDS[wi].icon} STAGE ${ref} · ${TOPICS[ref]}`:`${WORLDS[wi].icon} BOSS · ${WORLDS[wi].name}`;
   $("player-avatar").innerHTML=heroImg(save.avatar,portraitInfo(save.avatar)?72:52);$("player-avatar").className="player-avatar";

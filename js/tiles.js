@@ -4,7 +4,7 @@
 const TILE_PX=16;
 const HEXRGB={};
 const rgbOf=hex=>HEXRGB[hex]||(HEXRGB[hex]=hexToRgb_(hex));
-const G_={base:"#64aa3c",light:"#80c44c",dark:"#4f9432",deep:"#3d7a2a",tip:"#a8dc5c"};
+const G_={base:"#79bf56",light:"#86c962",dark:"#3d993d",deep:"#347349",tip:"#a6dc78"};   // โทนหญ้าตามชุด Farm RPG
 const P_={base:"#c89c66",light:"#dcb682",dark:"#ab8350",edge:"#8f6a3e",pebD:"#7e6248",pebL:"#ecd6a8"};
 const W_={deep:"#2d6fc0",mid:"#3a86d4",light:"#7cc3f0",foam:"#e4f7ff",shore:"#bfe6f8"};
 const PATHY=new Set([":","G","w","O","l","=","p"]);
@@ -16,6 +16,20 @@ function PixBuf(w,h){this.w=w;this.h=h;this.img=new ImageData(w,h);this.d=this.i
 PixBuf.prototype.set=function(x,y,hex){if(x<0||y<0||x>=this.w||y>=this.h)return;const c=rgbOf(hex),i=(y*this.w+x)*4,d=this.d;d[i]=c[0];d[i+1]=c[1];d[i+2]=c[2];d[i+3]=255};
 PixBuf.prototype.rect=function(x,y,w,h,hex){for(let j=0;j<h;j++)for(let i=0;i<w;i++)this.set(x+i,y+j,hex)};
 
+/* ---- ลายหญ้าจาก Farm RPG Tiny Asset Pack (Tileset Grass Spring) ----
+   . = หญ้า  a b c = เส้นเข้ม 3 ระดับ  ช่องว่าง = โปร่ง (เห็นพื้นข้างใต้) */
+const FARM_COL={".":"#79bf56",a:"#3d993d",b:"#347349",c:"#2d594f"};
+const FARM_TUFT=["....a..a....","....baab....","...acbbca...","..aac  caa..","abcc    ccba",".ab      ba.",".ab      ba.","abcc    ccba","..aac  caa..","...acbbca...","....baab....","....a......."];
+const FARM_EDGE=["                ","  cc cc   ccc cc"," c.bc.b ba.cb.c ","a.ab.aba.ba..abb","..a..a....a.....","................"];
+// วางลาย (หมุนได้ 0-3 = บน ขวา ล่าง ซ้าย) · ช่องว่าง: ใช้ under(i,j) ถ้ามี ไม่งั้นใช้สีหญ้าเข้ม
+function stamp_(px,pat,ox,oy,rot,under){
+  const h=pat.length,w=pat[0].length;
+  for(let j=0;j<h;j++)for(let i=0;i<w;i++){const ch=pat[j][i];let X=ox+i,Y=oy+j;
+    if(rot===1){X=15-(oy+j);Y=ox+i}else if(rot===2){X=15-(ox+i);Y=15-(oy+j)}else if(rot===3){X=oy+j;Y=15-(ox+i)}
+    if(X<0||Y<0||X>15||Y>15)continue;
+    if(ch===" ")px(X,Y,under?under(X,Y):"#4f9a3e");else if(ch!==".")px(X,Y,FARM_COL[ch])}
+}
+
 /* ---------------- พื้น ---------------- */
 function paintGround_(buf,x,y,frame,T){
   const ox=x*TILE_PX,oy=y*TILE_PX,ch=T(x,y),H=(i)=>hash2_(x,y,i);
@@ -24,21 +38,19 @@ function paintGround_(buf,x,y,frame,T){
     for(let j=0;j<16;j++)for(let i=0;i<16;i++){const h=hash2_(ox+i,oy+j,salt);px(i,j,h<pl?light:h<pl+pd?dark:base)}
   };
   const grass=flowers=>{
-    noise(G_.base,G_.light,G_.dark,0.05,0.06,3);
-    for(let k=0;k<3;k++){const i=1+Math.floor(H(k)*12),j=3+Math.floor(H(k+5)*11);px(i,j,G_.deep);px(i+2,j,G_.deep);px(i+1,j+1,G_.deep);px(i,j-1,G_.tip);px(i+2,j-1,G_.tip)}
+    noise(G_.base,G_.light,G_.base,0.03,0,3);
+    if(H(7)<0.2)stamp_(px,FARM_TUFT,Math.floor(H(8)*5),Math.floor(H(9)*5),0);          // พุ่มหญ้า (ลายจากชุด Farm RPG)
+    // ขอบหญ้าติดทางเดิน: ขอบหยัก ๆ มีเส้นเข้ม ส่วนที่โปร่งเห็นดินข้างใต้
+    const pathy=(dx,dy)=>{const t=T(x+dx,y+dy);return PATHY.has(t)||t==="p"};
+    const dirt=(i,j)=>{const h=hash2_(ox+i,oy+j,11);return h<0.07?P_.light:h<0.14?P_.dark:P_.base};
+    [[0,-1,0],[1,0,1],[0,1,2],[-1,0,3]].forEach(([dx,dy,rot])=>{if(pathy(dx,dy))stamp_(px,FARM_EDGE,0,0,rot,dirt)});
     if(flowers)for(let k=0;k<3;k++){const i=1+Math.floor(H(k+40)*13),j=1+Math.floor(H(k+50)*12),c=["#fee761","#f6757a","#ffffff","#c7a0ff"][Math.floor(H(k+60)*4)];
       px(i,j+1,c);px(i+1,j,c);px(i-1,j,c);px(i,j-1,c);px(i,j,"#feae34");px(i,j+2,G_.deep)}
   };
   const path=()=>{
     noise(P_.base,P_.light,P_.dark,0.07,0.07,11);
     for(let k=0;k<2;k++){const i=2+Math.floor(H(k+70)*11),j=2+Math.floor(H(k+80)*11);px(i,j,P_.pebD);px(i+1,j,P_.pebD);px(i,j-1,P_.pebL)}
-    // ขอบหญ้ายื่นเข้าทาง (ทำให้ทางดูกลมกลืน)
-    const grassy=(dx,dy)=>{const t=T(x+dx,y+dy);return !PATHY.has(t)&&!HOUSE.has(t)&&!WATERY.has(t)&&t!=="#"&&t!=="_"};
-    const fr=(k,s)=>1+(hash2_(ox+k,oy+s,17)>0.55?1:0)+(hash2_(ox+k,oy+s,19)>0.85?1:0);
-    if(grassy(0,-1))for(let i=0;i<16;i++){const d=fr(i,1);for(let j=0;j<d;j++)px(i,j,j===d-1?G_.dark:G_.base);px(i,d,P_.edge)}
-    if(grassy(0,1))for(let i=0;i<16;i++){const d=fr(i,2);for(let j=0;j<d;j++)px(i,15-j,j===0?G_.light:G_.base);px(i,15-d,P_.light)}
-    if(grassy(-1,0))for(let j=0;j<16;j++){const d=fr(j,3);for(let i=0;i<d;i++)px(i,j,G_.base);px(d,j,P_.edge)}
-    if(grassy(1,0))for(let j=0;j<16;j++){const d=fr(j,4);for(let i=0;i<d;i++)px(15-i,j,G_.dark);px(15-d,j,P_.edge)}
+
   };
   const water=()=>{
     for(let j=0;j<16;j++)for(let i=0;i<16;i++){const h=hash2_(ox+i,oy+j,23);px(i,j,h<0.04?W_.deep:W_.mid)}
@@ -92,7 +104,7 @@ function paintGround_(buf,x,y,frame,T){
     return;
   }
   if(PATHY.has(ch))return path();
-  if(HOUSE.has(ch))return;                 // บ้านวาดทั้งหลังภายหลัง
+  if(HOUSE.has(ch)&&!farmReady_())return;  // บ้านวาดทั้งหลังภายหลัง (ใช้ภาพบ้าน Farm RPG → ใต้บ้านเป็นหญ้า)
   grass(ch===",");
   if(ch==="v"){                            // หญ้าสูง
     for(let k=0;k<4;k++){const i=2+Math.floor(H(k+100)*11),j=8+Math.floor(H(k+110)*6);
@@ -242,7 +254,13 @@ function pineCanvas_(variant){
 function tallCanvas(kind,variant){
   const id=kind+variant;if(TALL_CACHE[id])return TALL_CACHE[id];
   let cv;
-  if(kind==="tree"){
+  if(kind==="tree"&&farmReady_()){
+    // ต้นเมเปิลจาก Farm RPG: ต้นใหญ่ 2 แบบ (กลับด้าน) + ต้นเล็ก 1 แบบ
+    const img=farmImg_("maple"),big=variant%3!==2,src=big?[89,0,52,48]:[70,13,22,35];
+    cv=document.createElement("canvas");cv.width=src[2];cv.height=src[3]+2;const c=cv.getContext("2d");c.imageSmoothingEnabled=false;
+    if(variant%3===1){c.translate(cv.width,0);c.scale(-1,1)}
+    c.drawImage(img,src[0],src[1],src[2],src[3],0,0,src[2],src[3]);
+  }else if(kind==="tree"){
     if(variant%3===2){cv=pineCanvas_(variant);}
     else{
       const L=variant%3===0
@@ -282,3 +300,26 @@ obj_crate:["................","................","..nnnnnnnnnnnn..","..nNNNNNNNN
 "..nnnnnNNnnnnn..","..nnnnNnnNnnnn..","..nnnNnnnnNnnn..","..nnNnnnnnnNnn..",
 "..nNnnnnnnnnNn..","..nNNNNNNNNNNn..","..NNNNNNNNNNNN..","................"]
 });
+
+/* ---- ภาพจาก Farm RPG Tiny Asset Pack: บ้าน ต้นเมเปิล รั้ว หีบ ---- */
+const FARM_IMGS=["house","maple","fence","chest"];
+function farmImg_(n){return packImg_("farm_"+n)}
+function farmReady_(){return typeof packImg_==="function"&&FARM_IMGS.every(n=>{const i=farmImg_(n);return i.complete&&i.naturalWidth})}
+// รอภาพโหลดเสร็จแล้ววาดแผนที่ใหม่
+function whenFarmReady_(fn){FARM_IMGS.forEach(n=>{const i=farmImg_(n);if(!(i.complete&&i.naturalWidth))i.addEventListener("load",()=>{if(farmReady_()){Object.keys(TALL_CACHE).forEach(k=>delete TALL_CACHE[k]);fn()}},{once:true})})}
+// บ้านทั้งหลัง (72×95) วางให้ประตูตรงช่องประตูของแผนที่
+const FARM_HOUSE={sx:148,sy:3,w:72,h:95,doorCx:50,doorBottom:87};
+function farmHouseCanvas_(flip){
+  const id="house"+(flip?1:0);if(TALL_CACHE[id])return TALL_CACHE[id];
+  const H=FARM_HOUSE,cv=document.createElement("canvas");cv.width=H.w;cv.height=H.h;const c=cv.getContext("2d");c.imageSmoothingEnabled=false;
+  if(flip){c.translate(H.w,0);c.scale(-1,1)}
+  c.drawImage(farmImg_("house"),H.sx,H.sy,H.w,H.h,0,0,H.w,H.h);return TALL_CACHE[id]=cv;
+}
+// รั้วต่อกันตามช่องข้าง ๆ
+function drawFarmFence_(c,x,y,T){
+  const img=farmImg_("fence"),f=(dx,dy)=>T(x+dx,y+dy)==="f",E=f(1,0),W=f(-1,0),N=f(0,-1),S=f(0,1);
+  let src;
+  if((N||S)&&!E&&!W)src=[0,16];                 // เสาแนวตั้ง
+  else if(E&&W)src=[16,32];else if(E)src=[16,48];else if(W)src=[32,48];else src=[16,64];
+  c.drawImage(img,src[0],src[1],16,16,x*TILE_PX,y*TILE_PX,16,16);
+}

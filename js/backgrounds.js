@@ -175,10 +175,55 @@ const BG_PAINTERS=[
 function bgURL(worldIndex){
   const custom=typeof CUSTOM!=="undefined"&&CUSTOM.backgrounds["w"+(worldIndex+1)];   // ภาพฉากของครูเอง (manifest: backgrounds)
   if(custom)return custom.url;
+  if(worldIndex===0&&typeof farmReady_==="function"&&farmReady_())return farmBattleBg_(false);   // ทุ่งหญ้า: ฉากจาก Farm RPG
   if(BG_CACHE[worldIndex])return BG_CACHE[worldIndex];
   const cv=document.createElement("canvas");cv.width=BG_W;cv.height=BG_H;
   const ctx=cv.getContext("2d");
   const paint=BG_PAINTERS[worldIndex]||BG_PAINTERS[0];
   paint(bgKit_(ctx,1000+worldIndex*97));
   return BG_CACHE[worldIndex]=cv.toDataURL();
+}
+
+/* ---- ฉากต่อสู้ดินแดนที่ 1 (ทุ่งหญ้า) ประกอบจากภาพ Farm RPG Tiny Asset Pack ----
+   ท้องฟ้า เมฆ เนินเขา บ้าน ต้นเมเปิล รั้ว และพื้นหญ้า · มีแบบกลางคืน (ใช้ในโหมดผจญภัยตอนมืด) */
+const FARM_BG={};
+function farmBattleBg_(night){
+  const key=night?"night":"day";if(FARM_BG[key])return FARM_BG[key];
+  const W=240,H=120,GY=78,cv=document.createElement("canvas");cv.width=W;cv.height=H;const c=cv.getContext("2d");c.imageSmoothingEnabled=false;
+  const rnd=seeded_(night?77:33),r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))};
+  // ท้องฟ้าไล่สีแบบเป็นแถบ + dither
+  const sky=night?["#141a3c","#1b2450","#232f66","#2c3b78"]:["#5ec2f0","#7fd0f4","#a3def6","#c8ecf8"];
+  for(let i=0;i<4;i++){r(0,i*14,W,14,sky[i]);if(i<3)for(let x=(i%2);x<W;x+=2)r(x,i*14+13,1,1,sky[i+1])}
+  r(0,56,W,GY-56,sky[3]);
+  if(night){for(let i=0;i<60;i++)r(rnd()*W,rnd()*50,1,1,rnd()<0.2?"#fff8c0":"#c8d4ff");
+    r(196,10,12,12,"#fff4c0");r(198,8,8,16,"#fff4c0");r(194,12,16,8,"#fff4c0");r(200,12,4,4,"#e8dca0")}
+  else{r(200,10,14,14,"#fff4a0");r(202,8,10,18,"#fff4a0");r(198,12,18,10,"#fff4a0")}
+  // เมฆ
+  const cloud=(x,y,s)=>{const col=night?"#3a4680":"#ffffff",sh=night?"#2e3a70":"#dff2fb";
+    [[0,4,12*s,5],[4*s,0,8*s,6],[9*s,2,9*s,6]].forEach(([dx,dy,w,h])=>{r(x+dx,y+dy,w,h,col)});r(x,y+8,21*s,1,sh)};
+  cloud(20,14,1.2);cloud(96,8,1);cloud(150,22,0.9);
+  // เนินเขาไกล 2 ชั้น
+  const hill=(base,amp,freq,ph,col)=>{for(let x=0;x<W;x++){const y=base-Math.round(amp*(0.6*Math.sin(x*freq+ph)+0.4*Math.sin(x*freq*2.3+ph*1.7)));r(x,y,1,GY-y,col)}};
+  hill(62,9,0.035,1,night?"#28406a":"#8fc8b8");hill(70,7,0.05,3,night?"#2a4a5a":"#6fb07e");
+  // พื้นหญ้า + พุ่มหญ้าแบบ Farm RPG
+  r(0,GY,W,H-GY,night?"#3e6a3a":"#79bf56");
+  for(let x=0;x<W;x+=2)if(rnd()<0.5)r(x,GY,2,1,night?"#335a32":"#86c962");
+  const tuftCol=night?{a:"#2e5a30",b:"#284a2c",c:"#223e2a"}:{a:"#3d993d",b:"#347349",c:"#2d594f"};
+  for(let k=0;k<9;k++){const tx=Math.floor(rnd()*(W-12)),ty=GY+6+Math.floor(rnd()*(H-GY-16));
+    FARM_TUFT.forEach((row,j)=>[...row].forEach((ch,i)=>{if(ch===".")return;r(tx+i,ty+j,1,1,ch===" "?(night?"#2f5230":"#4f9a3e"):tuftCol[ch])}))}
+  // ทางเดินดิน
+  const dirt=night?["#6a5638","#5a4830"]:["#c89c66","#ab8350"];
+  for(let x=0;x<W;x++){const y=H-16+Math.round(2*Math.sin(x*0.05));r(x,y,1,H-y,dirt[0]);if(rnd()<0.2)r(x,y+2+rnd()*8,1,1,dirt[1]);r(x,y,1,1,night?"#2e5a30":"#3d993d")}
+  // ดอกไม้
+  if(!night)for(let k=0;k<14;k++){const x=rnd()*W,y=GY+4+rnd()*(H-GY-22),col=["#fee761","#f6757a","#ffffff","#c7a0ff"][k%4];r(x,y,1,1,col);r(x-1,y+1,3,1,col);r(x,y+2,1,1,col)}
+  // บ้าน + ต้นไม้ + รั้ว (วาดทับด้วยภาพจากชุด แล้วหรี่แสงตอนกลางคืน)
+  const put=(img,sx,sy,w,h,dx,dy,flip)=>{c.save();if(flip){c.translate(dx+w,dy);c.scale(-1,1);dx=0;dy=0}c.drawImage(img,sx,sy,w,h,dx,dy,w,h);c.restore()};
+  const house=farmImg_("house"),maple=farmImg_("maple"),fence=farmImg_("fence");
+  put(maple,70,13,22,35,4,GY-33);put(house,148,3,72,95,14,GY-86+6);put(maple,89,0,52,48,78,GY-44);
+  put(maple,89,0,52,48,176,GY-45,true);put(maple,70,13,22,35,160,GY-32);put(maple,70,13,22,35,226,GY-31,true);
+  for(let x=98;x<176;x+=16)c.drawImage(fence,16,32,16,16,x,GY-10,16,16);
+  if(night){c.fillStyle="rgba(16,24,70,.38)";c.fillRect(0,GY-90,W,H);
+    // หน้าต่างบ้านมีไฟ
+    [[51,GY-32],[36,GY-9]].forEach(([x,y])=>{c.fillStyle="rgba(255,200,100,.3)";c.fillRect(x-3,y-3,14,14);c.fillStyle="rgba(255,214,120,.85)";c.fillRect(x,y,8,8)})}
+  return FARM_BG[key]=cv.toDataURL();
 }

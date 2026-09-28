@@ -111,17 +111,31 @@ function buildBase_(){
   X.base=[0,1].map(frame=>{
     const buf=new PixBuf(X.W*TS,X.H*TS);
     for(let y=0;y<X.H;y++)for(let x=0;x<X.W;x++)paintGround_(buf,x,y,frame,T);
-    houses.forEach((h,i)=>paintHouse_(buf,h,X.m.rows,i+(X.mapId==="village"?0:2)));
+    if(!farmReady_())houses.forEach((h,i)=>paintHouse_(buf,h,X.m.rows,i+(X.mapId==="village"?0:2)));   // บ้านแบบวาดเอง (ระหว่างรอภาพโหลด)
     paintFountains_(buf,X.m.rows,frame);
     const cv=document.createElement("canvas");cv.width=buf.w;cv.height=buf.h;
     const c=cv.getContext("2d");c.imageSmoothingEnabled=false;c.putImageData(buf.img,0,0);
     for(let y=0;y<X.H;y++)for(let x=0;x<X.W;x++){
       const ch=tileAt_(x,y);
       if(ch==="q"){c.drawImage(tallCanvas("bush",Math.floor(hash2_(x,y,5)*2)),x*TS,y*TS);continue}
+      if(farmReady_()){   // รั้วและหีบจากชุด Farm RPG
+        if(ch==="f"){drawFarmFence_(c,x,y,tileAt_);continue}
+        if(ch==="c"||ch==="C"){c.drawImage(farmImg_("chest"),8,ch==="c"?3:19,16,16,x*TS,y*TS,16,16);continue}
+      }
       const obj=OBJ_OF[ch];if(obj){const o=spriteCanvas(obj);if(o)c.drawImage(o,x*TS-1,y*TS-1)}
     }
+    // บ้านภาพ Farm RPG กว้าง 4.5 ช่อง: ช่องบ้านที่เหลือ (ยังเดินไม่ได้) ปลูกพุ่มไม้ไว้
+    if(farmReady_())houses.forEach((h,i)=>{const r=farmHouseRect_(h,i);
+      for(let y=h.y0+1;y<=h.y1;y++)for(let x=h.x0;x<=h.x1;x++){const cx=x*TS+8;if(cx>r.x+2&&cx<r.x+r.w-2)continue;c.drawImage(tallCanvas("bush",(x+y)%2),x*TS,y*TS)}});
     return cv;
   });
+  X.houses=houses;
+  if(!farmReady_())whenFarmReady_(()=>{if(X)buildBase_()});
+}
+// ตำแหน่งภาพบ้าน: ประตูในภาพตรงกับช่องประตู (D) ของแผนที่ · บ้านลำดับคี่กลับด้าน
+function farmHouseRect_(h,i){
+  const d=(X.m.doors||[]).find(d=>d.x>=h.x0&&d.x<=h.x1&&d.y>=h.y0&&d.y<=h.y1),dx=d?d.x:Math.round((h.x0+h.x1)/2),dy=d?d.y:h.y1;
+  return {x:dx*TS+8-(i%2?FARM_HOUSE.w-FARM_HOUSE.doorCx:FARM_HOUSE.doorCx),y:(dy+1)*TS-FARM_HOUSE.doorBottom,w:FARM_HOUSE.w,dy};
 }
 const OBJ_OF={o:"obj_rock",f:"obj_fence",s:"obj_sign",k:"obj_tablet",c:"obj_chest",C:"obj_chest_open",G:"obj_gate",n:"obj_carrot",w:"obj_well",x:"obj_barrel",X:"obj_crate"};
 
@@ -235,6 +249,12 @@ function drawExplore_(now){
     else if(ch==="u")ents.push({y:y+0.2,draw:()=>{const sc=tallCanvas("sunflower",(x+y)%3);c.drawImage(sc,x*TS-camX,y*TS+16-28-camY+(Math.floor(now/900+x)%2?0:0))}});
     else if(ch==="l")ents.push({y:y+0.2,draw:()=>c.drawImage(tallCanvas("lamp",0),x*TS-camX,y*TS+16-32-camY)});
   }
+  if(farmReady_())(X.houses||[]).forEach((h,i)=>{
+    const r=farmHouseRect_(h,i),hc=farmHouseCanvas_(i%2===1),hx=r.x,hy=r.y,dy=r.dy;
+    ents.push({y:dy+0.9,draw:()=>{
+      const pcx=p.fx*TS+8,pcy=p.fy*TS+4,behind=pcy<hy+60&&pcx>hx&&pcx<hx+hc.width&&p.fy<dy;   // เดินอยู่หลังบ้าน → บ้านโปร่งแสง
+      if(behind)c.globalAlpha=0.5;c.drawImage(hc,hx-camX,hy-camY);c.globalAlpha=1}});
+  });
   (X.m.labels||[]).forEach(l=>ents.push({y:l.y-0.6,draw:()=>{
     const bx=l.x*TS+1-camX,by=l.y*TS-9-camY;
     c.fillStyle="#4a2c18";c.fillRect(bx,by,14,10);c.fillStyle="#b87a48";c.fillRect(bx+1,by+1,12,8);c.fillStyle="#d49a60";c.fillRect(bx+1,by+1,12,1);

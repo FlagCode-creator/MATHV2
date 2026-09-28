@@ -78,6 +78,8 @@ async function loadCustomAssets(){
       const d=typeof def==="string"?{src:def}:def,img=await loadImage_(base+d.src+ver);
       if(img)CUSTOM.chars[key]={img:cleanImage_(img,true).canvas,cols:d.cols||3,rows:d.rows||4,order:d.order||["down","left","right","up"],frames:{}};
     }));
+    // โหลดภาพ Farm RPG (บ้าน ต้นไม้ รั้ว หีบ) ให้เสร็จก่อน ฉากแผนที่/ฉากต่อสู้จะได้ใช้ได้ทันที
+    if(typeof FARM_IMGS!=="undefined"&&typeof packImg_==="function")await Promise.all(FARM_IMGS.map(n=>new Promise(res=>{const i=farmImg_(n);if(i.complete&&i.naturalWidth)return res();i.addEventListener("load",res,{once:true});i.addEventListener("error",res,{once:true})})));
     CUSTOM.loaded=true;
     // ล้างแคชภาพที่วาดไว้ก่อนหน้า ให้ใช้ภาพใหม่
     Object.keys(CUSTOM.sprites).concat(Object.keys(CUSTOM.mapSprites)).forEach(k=>{delete SPRITE_CANVAS[k];delete SPRITE_CACHE[k]});
