@@ -25,6 +25,15 @@ function ambientInit_(){
 
 // วาดใต้ตัวละคร: น้ำระยิบ
 function ambientUnder_(c,camX,camY,vw,vh,now){
+  // สายน้ำพุ: หยดน้ำพุ่งขึ้นจากชามบนแล้วตกลงอ่าง (เป็นวงรอบ)
+  if(!X.fountains){X.fountains=[];const seen={};X.m.rows.forEach((r,y)=>[...r].forEach((ch,x)=>{if(ch==="O"&&!seen[(x-1)+","+y]&&!seen[x+","+(y-1)]&&!seen[(x-1)+","+(y-1)]){seen[x+","+y]=1;X.fountains.push([x*TS+16,y*TS+16])}}))}
+  X.fountains.forEach(([fx,fy])=>{if(fx<camX-40||fx>camX+vw+40||fy<camY-40||fy>camY+vh+40)return;
+    // สายน้ำตรงกลางพุ่งขึ้น แล้วโค้งตกลงอ่างรอบทิศ + ละอองกระเซ็นตรงที่ตก
+    const top=fy-7-camY,cx=fx-camX;
+    c.fillStyle="rgba(228,247,255,.95)";c.fillRect(cx-1,top-9,2,9);c.fillStyle="rgba(159,216,246,.9)";c.fillRect(cx-1,top-11+Math.round(Math.sin(now/120)),2,2);
+    for(let k=0;k<18;k++){const t=((now/1100)+k/18)%1,a=k/18*Math.PI*2+0.3,dx=Math.cos(a)*10*t,dy=Math.sin(a)*6*t,h=16*t*(1-t)*2.2;
+      c.fillStyle=t<0.55?"#f4fbff":"#9fd8f6";c.fillRect(Math.round(cx+dx),Math.round(top-11+dy+11*t-h+4*t),1,t<0.7?2:1);
+      if(t>0.9){c.fillStyle="rgba(228,247,255,.8)";c.fillRect(Math.round(cx+dx*1.05)-1,Math.round(top+dy+4),3,1)}}});
   const x0=Math.max(0,Math.floor(camX/TS)),x1=Math.min(X.W-1,Math.ceil((camX+vw)/TS)),y0=Math.max(0,Math.floor(camY/TS)),y1=Math.min(X.H-1,Math.ceil((camY+vh)/TS));
   const f=Math.floor(now/350);c.fillStyle="rgba(255,255,255,.85)";
   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){if(X.m.rows[y][x]!=="~")continue;

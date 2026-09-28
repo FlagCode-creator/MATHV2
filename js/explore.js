@@ -130,7 +130,7 @@ function buildBase_(){
       for(let y=h.y0+1;y<=h.y1;y++)for(let x=h.x0;x<=h.x1;x++){const cx=x*TS+8;if(cx>r.x+2&&cx<r.x+r.w-2)continue;c.drawImage(tallCanvas("bush",(x+y)%2),x*TS,y*TS)}});
     return cv;
   });
-  X.houses=houses;
+  X.houses=houses;X.fountains=null;
   if(!farmReady_())whenFarmReady_(()=>{if(X)buildBase_()});
 }
 // ต้นไม้ที่ล้อมด้วยต้นไม้ทุกด้าน (กลางป่า/ขอบแผนที่) → ไม่ต้องวาดทั้งต้น

@@ -41,9 +41,11 @@ function paintGround_(buf,x,y,frame,T){
     noise(G_.base,G_.light,G_.base,0.03,0,3);
     if(H(7)<0.2)stamp_(px,FARM_TUFT,Math.floor(H(8)*5),Math.floor(H(9)*5),0);          // พุ่มหญ้า (ลายจากชุด Farm RPG)
     // ขอบหญ้าติดทางเดิน: ขอบหยัก ๆ มีเส้นเข้ม ส่วนที่โปร่งเห็นดินข้างใต้
-    const pathy=(dx,dy)=>{const t=T(x+dx,y+dy);return PATHY.has(t)||t==="p"};
+    const isPlaza=(dx,dy)=>{const t=T(x+dx,y+dy);return t==="p"||(t==="O"&&T(x+dx-1,y+dy)!==":"&&T(x+dx+1,y+dy)!==":")};
+    const pathy=(dx,dy)=>{const t=T(x+dx,y+dy);return PATHY.has(t)&&!isPlaza(dx,dy)&&t!=="l"||(t==="l"&&!isPlaza(dx,dy))};
     const dirt=(i,j)=>{const h=hash2_(ox+i,oy+j,11);return h<0.07?P_.light:h<0.14?P_.dark:P_.base};
-    [[0,-1,0],[1,0,1],[0,1,2],[-1,0,3]].forEach(([dx,dy,rot])=>{if(pathy(dx,dy))stamp_(px,FARM_EDGE,0,0,rot,dirt)});
+    const curb=()=>"#7d7263";
+    [[0,-1,0],[1,0,1],[0,1,2],[-1,0,3]].forEach(([dx,dy,rot])=>{if(isPlaza(dx,dy))stamp_(px,FARM_EDGE,0,0,rot,curb);else if(pathy(dx,dy))stamp_(px,FARM_EDGE,0,0,rot,dirt)});
     if(flowers)for(let k=0;k<3;k++){const i=1+Math.floor(H(k+40)*13),j=1+Math.floor(H(k+50)*12),c=["#fee761","#f6757a","#ffffff","#c7a0ff"][Math.floor(H(k+60)*4)];
       px(i,j+1,c);px(i+1,j,c);px(i-1,j,c);px(i,j-1,c);px(i,j,"#feae34");px(i,j+2,G_.deep)}
   };
@@ -53,13 +55,22 @@ function paintGround_(buf,x,y,frame,T){
 
   };
   const water=()=>{
-    for(let j=0;j<16;j++)for(let i=0;i<16;i++){const h=hash2_(ox+i,oy+j,23);px(i,j,h<0.04?W_.deep:W_.mid)}
-    for(let k=0;k<3;k++){const j=(2+k*5+(frame?2:0))%16,i=Math.floor(H(k+90)*9)+(frame?1:0);rect(i,j,4,1,W_.light);px(i+4,j,W_.shore);rect(i+1,j+1,3,1,W_.deep)}
-    const land=(dx,dy)=>!WATERY.has(T(x+dx,y+dy));
-    if(land(0,-1))for(let i=0;i<16;i++){px(i,0,"#e8d29a");px(i,1,(i+frame)%3?W_.foam:W_.shore);if((i+frame)%2)px(i,2,W_.light)}
-    if(land(0,1))for(let i=0;i<16;i++){px(i,15,"#3d6d2e");px(i,14,W_.deep)}
-    if(land(-1,0))for(let j=0;j<16;j++){px(0,j,W_.foam);if((j+frame)%2)px(1,j,W_.light)}
-    if(land(1,0))for(let j=0;j<16;j++){px(15,j,W_.foam);if((j+frame)%2)px(14,j,W_.light)}
+    // น้ำแบบขอบโค้ง: คำนวณระยะจากตลิ่งทุกพิกเซล → ขอบหญ้าเข้ม · ฟองคลื่น · น้ำตื้น · น้ำลึก (มุมนูนโค้งมน)
+    const land=(dx,dy)=>{const t=T(x+dx,y+dy);return !WATERY.has(t)};
+    const L=land(-1,0),Rr=land(1,0),U=land(0,-1),D=land(0,1),R=6;
+    for(let j=0;j<16;j++)for(let i=0;i<16;i++){
+      const cx=i+0.5,cy=j+0.5;let d=99,isLand=false;
+      if(L)d=Math.min(d,cx);if(Rr)d=Math.min(d,16-cx);if(U)d=Math.min(d,cy);if(D)d=Math.min(d,16-cy);
+      if(land(-1,-1))d=Math.min(d,Math.hypot(cx,cy));if(land(1,-1))d=Math.min(d,Math.hypot(16-cx,cy));
+      if(land(-1,1))d=Math.min(d,Math.hypot(cx,16-cy));if(land(1,1))d=Math.min(d,Math.hypot(16-cx,16-cy));
+      const corner=(ax,ay)=>{const qx=ax?16-cx:cx,qy=ay?16-cy:cy;if(qx<R&&qy<R){const h=Math.hypot(R-qx,R-qy);if(h>R)isLand=true;else d=Math.min(d,R-h)}};
+      if(L&&U)corner(0,0);if(Rr&&U)corner(1,0);if(L&&D)corner(0,1);if(Rr&&D)corner(1,1);
+      if(isLand){px(i,j,hash2_(ox+i,oy+j,3)<0.04?G_.light:G_.base);continue}
+      // ระลอกคลื่น: ขีดสั้นแนวนอนเป็นแถว ๆ เลื่อนตามเฟรม
+      const gy=oy+j,gx=ox+i+frame*2,seg=Math.floor(gx/5),rip=gy%7===0&&hash2_(seg,gy,31)<0.35&&gx%5<3;
+      px(i,j,d<1?"#2d594f":d<2.2?((i+j+frame)%3?"#e4f7ff":"#bfe6f8"):d<3.6?"#6cc6ee":d<6?(rip?"#a8e0f8":"#4ea6de"):(rip?"#7cc3f0":W_.mid));
+    }
+    if(H(90)<0.3&&!L&&!Rr&&!U&&!D){const j=4+Math.floor(H(91)*8),i=4+Math.floor(H(92)*6);px(i,j,frame?"#ffffff":"#c8ecfc")}   // ประกายบนผิวน้ำ
   };
   const planks=broken=>{
     water();
@@ -74,12 +85,21 @@ function paintGround_(buf,x,y,frame,T){
     for(let j=0;j<16;j+=4){rect(2,j,12,3,"#b87a48");rect(2,j,12,1,"#d49a60");rect(2,j+3,12,1,"#6a4020");px(4,j+1,"#4a3020");px(11,j+1,"#4a3020")}
     rect(0,0,2,16,"#7a4a28");rect(14,0,2,16,"#5a3420");rect(0,0,1,16,"#a0683a");
   };
-  if(ch==="p"||(ch==="O"&&T(x-1,y)!==":"&&T(x+1,y)!==":")){   // ลานหินปูพื้น (รวมพื้นใต้น้ำพุบนลาน)
-    rect(0,0,16,16,"#8a8078");
-    for(let r=0;r<3;r++){const off=(y*3+r)%2?4:0,h=r<2?5:6;
-      for(let b=-1;b<3;b++){const sx=off+b*8,col=["#b8b0a4","#aca496","#c2baae"][Math.floor(hash2_(x*4+b,y*3+r,61)*3)];
-        for(let j=0;j<h-1;j++)for(let i=0;i<7;i++){const X_=sx+i;if(X_<0||X_>15)continue;px(X_,r*5+j,j===0?"#d4ccc0":j===h-2?"#948a7e":col)}}}
-    if(H(9)>0.8){px(3,7,"#64aa3c");px(4,7,"#80c44c")}
+  const plazaT=t=>t==="p"||t==="O"||t==="l";
+  if(ch==="p"||(ch==="O"&&T(x-1,y)!==":"&&T(x+1,y)!==":")||(ch==="l"&&((T(x-1,y)==="p"&&T(x+1,y)==="p")||(T(x,y-1)==="p"&&T(x,y+1)==="p")))){
+    // ลานหินปูพื้นโทนอุ่น: แผ่นหิน 8×8 เหลื่อมแถว มีไฮไลต์/เงา · ขอบลานเป็นคันหิน
+    rect(0,0,16,16,"#8f8577");
+    for(let r=0;r<2;r++){const off=(y*2+r)%2?4:0;
+      for(let b=-1;b<3;b++){const sx=off+b*8,col=["#d8cfbe","#cfc5b2","#e0d8c8","#c9bea9"][Math.floor(hash2_(x*4+b+off,y*2+r,61)*4)];
+        for(let j=0;j<7;j++)for(let i=0;i<7;i++){const X_=sx+i;if(X_<0||X_>15)continue;
+          px(X_,r*8+j,j===0||i===0?"#ece6d8":j===6||i===6?"#b3a894":col)}
+        if(hash2_(x*4+b,y*2+r,63)<0.12){const cx2=sx+3;if(cx2>0&&cx2<15){px(cx2,r*8+3,"#a79c88");px(cx2+1,r*8+4,"#a79c88")}}}}
+    const open=(dx,dy)=>!plazaT(T(x+dx,y+dy));
+    if(open(0,-1)){rect(0,0,16,2,"#7d7263");rect(0,0,16,1,"#a89d8a")}
+    if(open(0,1)){rect(0,14,16,2,"#7d7263");rect(0,15,16,1,"#5e5549")}
+    if(open(-1,0)){rect(0,0,2,16,"#7d7263");rect(0,0,1,16,"#a89d8a")}
+    if(open(1,0)){rect(14,0,2,16,"#7d7263");rect(15,0,1,16,"#5e5549")}
+    if(H(9)>0.85){px(3,7,G_.base);px(4,7,G_.light);px(4,6,G_.dark)}   // หญ้างอกตามรอยต่อ
     return;
   }
   if(ch==="~")return water();
@@ -188,26 +208,27 @@ function paintHouse_(buf,h,rows,idx){
 
 /* ---------------- น้ำพุ (2×2 ช่อง) ---------------- */
 function paintFountains_(buf,rows,frame){
+  // น้ำพุหินแปดเหลี่ยม 2×2 ช่อง: ขอบอ่างหินอุ่น (มีเงา) · น้ำในอ่างมีระลอกวงกลม · แท่นกลาง + ชามบน (สายน้ำวาดแยกเป็นแอนิเมชัน)
   const seen=new Set();
   rows.forEach((r,y)=>[...r].forEach((ch,x)=>{
     if(ch!=="O"||seen.has(x+","+y))return;
     for(let j=0;j<2;j++)for(let i=0;i<2;i++)seen.add((x+i)+","+(y+j));
-    const cx=x*16+16,cy=y*16+16;
+    const cx=x*16+16,cy=y*16+16,oct=(i,j)=>Math.max(Math.abs(i),Math.abs(j),(Math.abs(i)+Math.abs(j))*0.72);
     for(let j=-16;j<16;j++)for(let i=-16;i<16;i++){
-      const d=Math.sqrt((i+0.5)**2+(j+0.5)**2);
-      if(d>15.5)continue;
-      let c;
-      if(d>13.5)c="#6f7990";else if(d>11.5)c=j<0?"#d2d8e4":"#b8c0d0";else if(d>10.5)c="#6f7990";
-      else{c=hash2_(cx+i,cy+j+frame,53)<0.12?"#7cc3f0":"#4f9ce0";if(Math.abs(d-4-frame*2)<0.6||Math.abs(d-8+frame)<0.5)c="#bfe6f8"}
+      const d=oct(i+0.5,j+0.5);if(d>15.6)continue;let c;
+      if(d>15)c="#5e5549";                                                  // เส้นขอบนอก
+      else if(d>12.2)c=j<-9?"#ece6d8":j>9?"#a79c88":(hash2_(cx+i,cy+j,71)<0.1?"#c9bea9":"#d8cfbe");   // ขอบอ่าง
+      else if(d>11.2)c="#6a6052";                                           // ขอบในอ่าง (เงา)
+      else{const rd=Math.hypot(i+0.5,j+0.5),ring=Math.abs(rd-(4+frame*3))<0.6||Math.abs(rd-(8.5-frame))<0.5;
+        c=j<-7&&d>9?"#2f78c4":ring?"#bfe6f8":hash2_(cx+i,cy+j+frame,53)<0.06?"#7cc3f0":"#4a96dc"}
       buf.set(cx+i,cy+j,c);
     }
-    buf.rect(cx-2,cy-5,4,8,"#c8d0de");buf.rect(cx-2,cy-5,1,8,"#e8ecf4");buf.rect(cx+1,cy-5,1,8,"#8a94a8");
-    buf.rect(cx-3,cy-6,6,2,"#aab4c6");
-    const spray=frame?[[-3,-9],[3,-9],[-5,-6],[5,-6],[0,-11]]:[[-2,-10],[2,-10],[-4,-7],[4,-7],[0,-12]];
-    spray.forEach(([i,j])=>{buf.set(cx+i,cy+j,"#e4f7ff");buf.set(cx+i,cy+j+1,"#7cc3f0")});
+    // แท่นกลางและชามบน
+    buf.rect(cx-2,cy-3,4,7,"#d8cfbe");buf.rect(cx-2,cy-3,1,7,"#ece6d8");buf.rect(cx+1,cy-3,1,7,"#a79c88");
+    buf.rect(cx-5,cy-5,10,2,"#d8cfbe");buf.rect(cx-5,cy-5,10,1,"#ece6d8");buf.rect(cx-4,cy-3,8,1,"#a79c88");
+    buf.rect(cx-4,cy-6,8,1,"#4a96dc");buf.rect(cx-6,cy-5,1,2,"#5e5549");buf.rect(cx+5,cy-5,1,2,"#5e5549");
   }));
 }
-
 /* ---------------- ต้นไม้ใหญ่ / พุ่มไม้ / เสาไฟ (วาดเป็นวัตถุสูงเพื่อซ้อนหน้า-หลังตัวละคร) ---------------- */
 const TALL_CACHE={};
 function canopyCanvas_(w,h,lumps,trunk,seed){
