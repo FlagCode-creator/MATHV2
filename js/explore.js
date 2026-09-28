@@ -256,6 +256,8 @@ function drawExplore_(now){
 // ตัวละครที่มีภาพใหญ่ (portraits) → ใช้ภาพนั้นแบบย่อ เดินเด้งโยกซ้ายขวา · ไม่มีภาพ → ตัวเดินที่วาดด้วยโค้ด (16×32)
 const CHAR_ART_H=32,MON_ART_H=24,BOSS_ART_H=42,MON_ART_W=26,BOSS_ART_W=46;
 function drawChar_(c,spriteKey,dir,frame,fx,fy,camX,camY,ent,now){
+  const walk=walkFrame(spriteKey,dir,frame);   // มี sprite sheet เดิน 4 ทิศ → ใช้ท่าเดินจริง
+  if(walk){drawArt_(c,walk,CHAR_ART_H,fx*TS+8-camX,fy*TS+TS-camY,ent,false,now||performance.now());return}
   const art=portraitInfo(spriteKey);
   if(art){drawArt_(c,art,CHAR_ART_H,fx*TS+8-camX,fy*TS+TS-camY,ent,dir==="left",now||performance.now());return}
   const key=charKeyFor(spriteKey);
@@ -281,7 +283,7 @@ function drawArt_(c,info,h,cx,footY,ent,flip,now){
   const P=X.px||2,mini=miniArt_(info,h,P),w=mini.width/P,hh=mini.height/P;
   const t=ent&&ent.t!=null?ent.t:1,moving=t<1,ph=moving?Math.sin(t*Math.PI):0;
   const side=((ent&&ent.step!=null?ent.step:ent?ent.x+ent.y:0)%2)?1:-1;
-  const rot=moving?ph*0.11*side:0,bob=moving?ph*2:0;
+  const rot=moving&&!info.walk?ph*0.11*side:0,bob=moving?ph*(info.walk?1:2):0;   // มีท่าเดินจริง → ไม่ต้องโยก
   const breathe=moving?1:1+0.022*Math.sin(now/380+(ent?ent.x*1.7+ent.y:0));
   const sx=Math.round(cx*P)/P,sy=Math.round(footY*P)/P;
   c.fillStyle="rgba(0,0,0,.26)";c.beginPath();c.ellipse(sx,sy-1,Math.max(4,w*0.36)*(1-bob*0.06),2.2,0,0,Math.PI*2);c.fill();

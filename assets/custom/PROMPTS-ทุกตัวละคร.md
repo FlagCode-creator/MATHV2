@@ -136,6 +136,101 @@ Bottom row: 7 upper body portraits (head and chest): neutral smile, very happy, 
 Same outfit and colors in every pose, even spacing, plain white background, no text
 ```
 
+## ท่าเดิน 4 ทิศ (ตัวละคร 12 + NPC 5 + ครูแฟล็ก) — แผ่นละ 12 ช่อง
+แนบภาพปกติของตัวละครตัวนั้นเป็นภาพอ้างอิง · ช่องไม่ต้องเท่ากันเป๊ะ Claude จะตัดและจัดช่องให้ใหม่ · แต่ **ลำดับแถวต้องถูก** (ลง · ซ้าย · ขวา · ขึ้น)
+เคล็ดลับ: ถ้า AI ทำ 12 ช่องแล้วเพี้ยน ให้ขอทีละแถว (ทีละทิศ 3 ช่อง) แล้วส่งมา 4 ภาพ
+
+### นักเรียนชาย — `student_m`
+```
+RPG walking sprite sheet of the same character as the reference image: Thai male high school student, white short-sleeve shirt with blue tie, navy blue shorts, short black hair, backpack. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### นักเรียนหญิง — `student_f`
+```
+RPG walking sprite sheet of the same character as the reference image: Thai female high school student, white blouse with blue bow, navy pleated skirt, long black hair. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### อัศวิน — `warrior`
+```
+RPG walking sprite sheet of the same character as the reference image: young knight, silver helmet with red plume, blue armor, sword and round shield. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### อัศวินไฟ — `warrior_r`
+```
+RPG walking sprite sheet of the same character as the reference image: fire knight, silver helmet with gold plume, red armor, flaming sword. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### พ่อมด — `mage`
+```
+RPG walking sprite sheet of the same character as the reference image: old wizard, purple pointed hat with a star, long white beard, purple robe, wooden staff. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### จอมเวทน้ำ — `mage_b`
+```
+RPG walking sprite sheet of the same character as the reference image: water mage, blue pointed hat, white beard, blue robe, crystal staff. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### นินจา — `ninja`
+```
+RPG walking sprite sheet of the same character as the reference image: ninja, dark navy hood and face mask, red belt, kunai. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### นินจาแดง — `ninja_r`
+```
+RPG walking sprite sheet of the same character as the reference image: red ninja, crimson hood and face mask, black belt, twin daggers. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### นักธนู — `archer`
+```
+RPG walking sprite sheet of the same character as the reference image: forest archer, green hood, green tunic, brown leather belt, longbow. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### เรนเจอร์ — `archer_b`
+```
+RPG walking sprite sheet of the same character as the reference image: ranger, brown hair, brown leather jacket, green pants, crossbow. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### เจ้าหญิง — `princess`
+```
+RPG walking sprite sheet of the same character as the reference image: princess, long blonde hair, golden crown, pink ball gown, magic wand. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### เจ้าชาย — `prince`
+```
+RPG walking sprite sheet of the same character as the reference image: prince, blonde hair, golden crown, blue royal coat, white pants, red cape, sword. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### ป้าแม่ค้า — `npc_shop`
+```
+RPG walking sprite sheet of the same character as the reference image: friendly village shopkeeper aunt, brown hair bun, green dress, white apron. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### เจ้าของโรงแรม — `npc_inn`
+```
+RPG walking sprite sheet of the same character as the reference image: kind innkeeper lady, long blonde hair, pink dress, white apron. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### ลุงช่างไม้ — `npc_carpenter`
+```
+RPG walking sprite sheet of the same character as the reference image: carpenter uncle, yellow hard hat, orange work shirt, blue jeans, hammer. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### ลุงชาวสวน — `npc_farmer`
+```
+RPG walking sprite sheet of the same character as the reference image: farmer uncle, straw hat, blue shirt, brown overalls, carrot. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### น้องต้นกล้า — `npc_kid`
+```
+RPG walking sprite sheet of the same character as the reference image: little boy, messy orange hair, red t-shirt, blue shorts, cheerful. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
+### ครูแฟล็ก — `npc_flag`
+(แนบภาพเต็มตัวของครูแฟล็กชุดใหม่เป็นภาพอ้างอิง)
+```
+RPG walking sprite sheet of the same character as the reference image: Thai male teacher, short black hair, khaki Thai government teacher uniform with shoulder boards, name tag and ribbon bar, khaki trousers, brown shoes. Grid of 3 columns x 4 rows, every frame the same size and scale, full body, chibi, pixel art, clean dark outline, soft cel shading. Row 1: facing down toward the viewer. Row 2: facing left (side view). Row 3: facing right (side view). Row 4: facing up, back view. Columns in every row: left foot stepping forward, standing still, right foot stepping forward. Same outfit and colors in every frame, plain white background, even spacing, no text, no shadow, no grid lines
+```
+
 ## มอนสเตอร์ (26 ตัว) — แผ่นละ 2 ช่อง
 แนบภาพปกติของมอนสเตอร์ตัวนั้น (`assets/custom/monsters/<ตัวอักษร>.png`) ไปเป็นภาพอ้างอิง · เกมใช้ตอนมอนสเตอร์โจมตี และตอนโดนเราตี
 
@@ -399,7 +494,8 @@ pixel art battle background, wide 16:9 landscape, side view of a dramatic throne
 ```json
 "poses": { "A": { "attack": "poses/A_attack.png", "hurt": "poses/A_hurt.png" },
            "boss_w1": { "attack": "poses/boss_w1_attack.png", "hurt": "poses/boss_w1_hurt.png", "rage": "poses/boss_w1_rage.png" } },
-"backgrounds": { "w1": "backgrounds/w1.png", "w2": "backgrounds/w2.png" }
+"backgrounds": { "w1": "backgrounds/w1.png", "w2": "backgrounds/w2.png" },
+"characters":  { "warrior": { "src": "chars/warrior.png", "cols": 3, "rows": 4 } }
 ```
 
 ## เคล็ดลับ

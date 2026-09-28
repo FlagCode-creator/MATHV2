@@ -17,7 +17,7 @@ const CUSTOM={portraits:{},sprites:{},mapSprites:{},chars:{},talk:{},expressions
 function loadImage_(src){return new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>res(null);i.src=src})}
 
 // ตัดพื้นหลังสีเรียบ (ไล่จากขอบภาพ) + ตัดขอบโปร่งใสรอบตัวละคร
-function cleanImage_(img){
+function cleanImage_(img,noTrim){
   const w=img.naturalWidth,h=img.naturalHeight,cv=document.createElement("canvas");cv.width=w;cv.height=h;
   const ctx=cv.getContext("2d");ctx.drawImage(img,0,0);
   let data;try{data=ctx.getImageData(0,0,w,h)}catch(e){return {canvas:cv,url:img.src,w,h}}
@@ -35,6 +35,7 @@ function cleanImage_(img){
       d[i+3]=0;stack.push(x+1,y,x-1,y,x,y+1,x,y-1);
     }
   }
+  if(noTrim){ctx.putImageData(data,0,0);return {canvas:cv,url:null,w,h}}
   let x0=w,y0=h,x1=-1,y1=-1;
   for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[idx(x,y)+3]>10){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
   if(x1<0)return {canvas:cv,url:cv.toDataURL(),w,h};
@@ -75,7 +76,7 @@ async function loadCustomAssets(){
     }));
     await Promise.all(Object.entries(m.characters||{}).map(async([key,def])=>{
       const d=typeof def==="string"?{src:def}:def,img=await loadImage_(base+d.src+ver);
-      if(img)CUSTOM.chars[key]={img,cols:d.cols||3,rows:d.rows||4,order:d.order||["down","left","right","up"]};
+      if(img)CUSTOM.chars[key]={img:cleanImage_(img,true).canvas,cols:d.cols||3,rows:d.rows||4,order:d.order||["down","left","right","up"],frames:{}};
     }));
     CUSTOM.loaded=true;
     // ล้างแคชภาพที่วาดไว้ก่อนหน้า ให้ใช้ภาพใหม่
@@ -119,6 +120,13 @@ function flagExpressionURL(mood){
 function fitImg_(info,size,cls){
   const s=Math.min(size/info.w,size/info.h),w=Math.round(info.w*s),h=Math.round(info.h*s);
   return `<img class="sprite ${s<1?"smooth":"pixelated"} ${cls||""}" src="${info.url}" width="${w}" height="${h}" alt="">`;
+}
+// ท่าเดินจาก sprite sheet สำหรับวาดบนแผนที่ (เก็บแคชทีละช่อง)
+function walkFrame(key,dir,frame){
+  const c=CUSTOM.chars[stripKey_(key)];if(!c)return null;
+  const k=dir+frame;if(c.frames[k])return c.frames[k];
+  const cv=customCharFrame(stripKey_(key),dir,frame);
+  return c.frames[k]={canvas:cv,w:cv.width,h:cv.height,walk:true};
 }
 // sprite sheet เดิน 4 ทิศ: 3 คอลัมน์ (ก้าว-ยืน-ก้าว) × 4 แถว (ล่าง ซ้าย ขวา บน)
 function customCharFrame(key,dir,frame){
