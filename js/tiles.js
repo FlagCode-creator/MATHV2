@@ -2,6 +2,7 @@
    วาดพื้นลงบัฟเฟอร์พิกเซลโดยตรง (เร็ว) + ขอบหญ้า/ทาง/น้ำกลมกลืนกัน + บ้านทั้งหลัง + ต้นไม้ใหญ่ 2×2 */
 
 const TILE_PX=16;
+let INTERIOR_=false;   // กำลังวาดแผนที่ในบ้าน
 const HEXRGB={};
 const rgbOf=hex=>HEXRGB[hex]||(HEXRGB[hex]=hexToRgb_(hex));
 const G_={base:"#79bf56",light:"#86c962",dark:"#3d993d",deep:"#347349",tip:"#a6dc78"};   // โทนหญ้าตามชุด Farm RPG
@@ -34,6 +35,27 @@ function stamp_(px,pat,ox,oy,rot,under){
 function paintGround_(buf,x,y,frame,T){
   const ox=x*TILE_PX,oy=y*TILE_PX,ch=T(x,y),H=(i)=>hash2_(x,y,i);
   const px=(i,j,c)=>buf.set(ox+i,oy+j,c),rect=(i,j,w,h,c)=>buf.rect(ox+i,oy+j,w,h,c);
+  if(INTERIOR_){   // ในบ้าน: พื้นไม้กระดาน · ผนังวอลเปเปอร์ + บัวผนัง · ขอบห้องไม้เข้ม · พรมเช็ดเท้าที่ประตู
+    const W=buf.w/TILE_PX,Hh=buf.h/TILE_PX;
+    if(ch==="_"||ch==="e"){
+      for(let j=0;j<16;j++){const row=Math.floor((oy+j)/4),off=(row*7)%16;for(let i=0;i<16;i++){const seam=(ox+i+off)%16===0;
+        px(i,j,(oy+j)%4===3?"#8a5a32":seam?"#9a6a3e":row%2?"#c48a54":"#b87c48")}}
+      if(ch==="e"){rect(1,4,14,10,"#8a2a2a");rect(2,5,12,8,"#b04a3a");for(let i=3;i<13;i+=2)rect(i,6,1,6,"#c86a50")}
+      return;
+    }
+    if(ch==="#"){
+      if(y<=1&&x>0&&x<W-1){
+        for(let j=0;j<16;j++)for(let i=0;i<16;i++)px(i,j,(ox+i)%6<3?"#ecd8b0":"#e2cc9e");
+        if(y===0){rect(0,0,16,3,"#5a3420");rect(0,3,16,1,"#8a5a32")}
+        else{rect(0,6,16,1,"#c98a52");rect(0,7,16,7,"#9a6a44");for(let i=0;i<16;i+=8){rect(i+1,8,6,5,"#a87450");rect(i+1,8,6,1,"#b8845c")}rect(0,14,16,2,"#5a3420")}
+        return;
+      }
+      rect(0,0,16,16,"#3a2618");
+      if(y<Hh-1&&x===0)rect(12,0,4,16,"#6e4a30");if(y<Hh-1&&x===W-1)rect(0,0,4,16,"#6e4a30");
+      if(y===Hh-1)rect(0,0,16,4,"#6e4a30");
+      return;
+    }
+  }
   const noise=(base,light,dark,pl,pd,salt)=>{
     for(let j=0;j<16;j++)for(let i=0;i<16;i++){const h=hash2_(ox+i,oy+j,salt);px(i,j,h<pl?light:h<pl+pd?dark:base)}
   };
@@ -346,7 +368,7 @@ obj_crate:["................","................","..nnnnnnnnnnnn..","..nNNNNNNNN
 });
 
 /* ---- ภาพจาก Farm RPG Tiny Asset Pack: บ้าน ต้นเมเปิล รั้ว หีบ ---- */
-const FARM_IMGS=["house","maple","fence","chest"];
+const FARM_IMGS=["house","maple","fence","chest","interior"];
 function farmImg_(n){return packImg_("farm_"+n)}
 function farmReady_(){return typeof packImg_==="function"&&FARM_IMGS.every(n=>{const i=farmImg_(n);return i.complete&&i.naturalWidth})}
 // รอภาพโหลดเสร็จแล้ววาดแผนที่ใหม่

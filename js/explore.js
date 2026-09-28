@@ -74,7 +74,7 @@ function loadMap_(mapId,x,y,dir){
     canvas:$("ex-canvas"),frame:0,busy:false,invulnUntil:0,zone:null,pending:old.pending||null,
     px:old.px,cssScale:old.cssScale,hudPad:old.hudPad,scale:old.scale
   };
-  X.ctx=X.canvas.getContext("2d");
+  X.ctx=X.canvas.getContext("2d");X.propCells=propCells_(m);
   if(blocked_(x,y)&&!(m.warps||[]).some(w=>w.x===x&&w.y===y)){X.p.x=X.p.fx=m.spawn.x;X.p.y=X.p.fy=m.spawn.y;e.x=m.spawn.x;e.y=m.spawn.y}
   if(m.zones)m.zones.forEach(z=>z.monsters.forEach(([mx,my],i)=>{
     X.mons.push({id:z.id+i,stage:z.stage,x:mx,y:my,fx:mx,fy:my,t:1,zone:z,next:performance.now()+rng(600,2000),
@@ -96,7 +96,7 @@ function tileAt_(x,y){
 }
 function gateAt_(x,y){for(const [gid,g] of Object.entries(X.m.gates||{}))if(g.cells.some(([gx,gy])=>gx===x&&gy===y))return gid;return null}
 const inZone_=(z,x,y)=>x>=z.x0&&x<=z.x1&&y>=z.y0&&y<=z.y1;
-function blocked_(x,y){const t=tileAt_(x,y);return TILE_BLOCK.has(t)||t==="C"}
+function blocked_(x,y){const t=tileAt_(x,y);return TILE_BLOCK.has(t)||t==="C"||!!propAt_(x,y)}
 function npcAt_(x,y){return X.npcs.find(n=>n.x===x&&n.y===y)}
 function monAt_(x,y){return X.mons.find(m=>m.x===x&&m.y===y)}
 function bossAt_(x,y){const b=X.m.boss;return b&&!save.explore.bossDone&&b.x===x&&b.y===y?b:null}
@@ -110,6 +110,7 @@ function buildBase_(){
   const houses=findHouses_(X.m.rows);
   X.base=[0,1].map(frame=>{
     const buf=new PixBuf(X.W*TS,X.H*TS);
+    INTERIOR_=!!X.m.interior;
     for(let y=0;y<X.H;y++)for(let x=0;x<X.W;x++)paintGround_(buf,x,y,frame,T);
     if(!farmReady_())houses.forEach((h,i)=>paintHouse_(buf,h,X.m.rows,i+(X.mapId==="village"?0:2)));   // บ้านแบบวาดเอง (ระหว่างรอภาพโหลด)
     paintFountains_(buf,X.m.rows,frame);
@@ -125,6 +126,7 @@ function buildBase_(){
       }
       const obj=OBJ_OF[ch];if(obj){const o=spriteCanvas(obj);if(o)c.drawImage(o,x*TS-1,y*TS-1)}
     }
+    if(X.m.interior)paintInteriorBase_(c,X.m);
     if(farmReady_())paintForest_(c);
     // บ้านภาพ Farm RPG กว้าง 4.5 ช่อง: ช่องบ้านที่เหลือ (ยังเดินไม่ได้) ปลูกพุ่มไม้ไว้
     if(farmReady_())houses.forEach((h,i)=>{const r=farmHouseRect_(h,i);
@@ -217,7 +219,9 @@ function tryStep_(dir,now){
   p.dir=dir;save.explore.dir=dir;
   const mon=monAt_(nx,ny);if(mon){startFieldBattle_(mon);return}
   if(bossAt_(nx,ny)){startBossBattle_();return}
-  if(blocked_(nx,ny)||npcAt_(nx,ny)){p.bump=now;return}
+  if(blocked_(nx,ny)||npcAt_(nx,ny)){p.bump=now;
+    if(dir==="up"){const door=(X.m.doors||[]).find(d=>d.x===nx&&d.y===ny);if(door&&enterDoor_(door))return}   // เดินชนประตู = เข้าบ้าน
+    return}
   p.sx=p.x;p.sy=p.y;p.x=nx;p.y=ny;p.t0=now;p.t=0;p.step++;
   dust_(p.sx*TS+8,p.sy*TS+TS,p.step%2?2:1);
 }
@@ -237,7 +241,7 @@ function checkZone_(){
 function warpTo_(w){
   const wrap=$("ex-wrap");wrap.classList.add("fade");
   X.busy=true;
-  setTimeout(()=>{loadMap_(w.to,w.tx,w.ty,save.explore.dir);playBgm(screenTrack_("explore"));X.running=true;resizeExplore_();updateExHud_();wrap.classList.remove("fade");X.invulnUntil=performance.now()+1000;checkZone_()},220);
+  setTimeout(()=>{loadMap_(w.to,w.tx,w.ty,w.dir||save.explore.dir);playBgm(screenTrack_("explore"));X.running=true;resizeExplore_();updateExHud_();wrap.classList.remove("fade");X.invulnUntil=performance.now()+1000;checkZone_()},220);
 }
 function showArea_(text){const el=$("ex-area");el.textContent=text;el.classList.remove("show");void el.offsetWidth;el.classList.add("show")}
 $("ex-area").addEventListener("animationend",ev=>ev.currentTarget.classList.remove("show"));
@@ -320,6 +324,7 @@ function drawExplore_(now){
     const gx=cells[0][0],y0=Math.min(...cells.map(c=>c[1])),y1=Math.max(...cells.map(c=>c[1]));
     ents.push({y:y1+0.1,draw:()=>drawStoneGate_(c,gx,y0,y1,gid,camX,camY,now,anim)});
   });
+  if(X.m.interior)interiorEnts_(ents,c,camX,camY);
   if(X.bridgeAnim)ents.push({y:-1,draw:()=>drawBridgeBuild_(c,camX,camY,now)});
   (X.m.labels||[]).forEach(l=>ents.push({y:l.y-0.6,draw:()=>{
     const bx=l.x*TS+1-camX,by=l.y*TS-9-camY;
@@ -598,10 +603,11 @@ async function interact_(){
   const npc=npcAt_(tx,ty);if(npc)return talkNpc_(npc);
   const mon=monAt_(tx,ty);if(mon)return startFieldBattle_(mon);
   if(bossAt_(tx,ty))return startBossBattle_();
+  const prop=propAt_(tx,ty);if(prop&&prop.act)return usePropAct_(prop);
+  if(X.m.board&&ty===1&&tx>=X.m.board[0]&&tx<=X.m.board[1])return boardTip_();
   const door=(X.m.doors||[]).find(d=>d.x===tx&&d.y===ty);
   if(door){
-    if(door.act==="shop")return talkNpc_(X.npcs.find(n=>n.id==="shop"));
-    if(door.act==="inn")return talkNpc_(X.npcs.find(n=>n.id==="inn"));
+    if(door.inside)return enterDoor_(door);
     return exSay_([{sprite:save.avatar?"hero:"+heroKey(save.avatar):"npc_kid",name:save.name,text:door.text}]);
   }
   const t=tileAt_(tx,ty);

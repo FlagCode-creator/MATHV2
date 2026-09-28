@@ -51,6 +51,7 @@ function grassOver_(c,fx,fy,camX,camY,now){
 // วาดทับทั้งฉาก: ใบไม้ ผีเสื้อ เงาเมฆ แสงกลางวัน-กลางคืน หิ่งห้อย ฟองอารมณ์
 function ambientOver_(c,camX,camY,vw,vh,now,dt){
   if(!X.amb||X.amb.map!==X.mapId){ambientInit_();X.amb.map=X.mapId}
+  if(X.m.interior){interiorLight_(c,camX,camY,now);drawEmotes_(c,camX,camY,now);return}   // ในบ้าน: ไม่มีท้องฟ้า/กลางคืน
   const A=X.amb,sec=dt/1000,{dark,warm}=dayLight_(dayPhase_(now));
   // ใบไม้ร่วงจากต้นไม้ในจอ
   if(now-A.lastLeaf>260&&A.leaves.length<18){A.lastLeaf=now;
