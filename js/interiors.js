@@ -81,6 +81,7 @@ function enterDoor_(door){
 // ใช้ของในบ้าน: เตียง = นอนพัก · โต๊ะ = จดหมายปริศนา · เคาน์เตอร์ = คุยกับป้าแม่ค้า
 async function usePropAct_(p){
   const e=save.explore;
+  if(p.act==="outfit")return openOutfits_();
   if(p.act==="shop"){const n=X.npcs.find(n=>n.id==="shop");if(n)return talkNpc_(n)}
   if(p.act==="rest"){
     X.busy=true;const wrap=$("ex-wrap");wrap.classList.add("fade");SFX.heal();await sleep(700);

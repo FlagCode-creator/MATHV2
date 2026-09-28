@@ -507,3 +507,17 @@ img.ico{width:1.3em;height:1.3em;vertical-align:-.3em;image-rendering:pixelated;
 .reward img.ico{width:1.4em;height:1.4em}
 .credits{text-align:center;font-size:.72rem;color:#7c86c9;margin:18px 0 8px}.credits a{color:#a5b4fc}
 .tiny-mon{image-rendering:pixelated;display:block}
+
+/* ===== ภารกิจรายวัน · สมุดมอนสเตอร์ · ร้านชุด (js/life.js) ===== */
+.ex-menu-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.daily-row{display:flex;align-items:center;gap:10px;justify-content:space-between;text-align:left;background:rgba(255,255,255,.05);border-radius:6px;padding:8px 10px;margin:6px 0}
+.daily-row>div{flex:1;min-width:0}.daily-row small{opacity:.8}
+.daily-bar{height:7px;background:#0b1026;border-radius:4px;overflow:hidden;margin:4px 0}.daily-bar span{display:block;height:100%;background:#84cc16}
+.book-weak{background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.5);border-radius:6px;padding:6px 8px;margin-bottom:8px;font-size:.9rem;text-align:left}
+.book-list{max-height:48vh;overflow-y:auto;margin-bottom:8px}
+.book-row{display:flex;gap:10px;align-items:center;text-align:left;background:rgba(255,255,255,.05);border-radius:6px;padding:6px 8px;margin:5px 0}
+.book-row>div{flex:1;min-width:0}.book-row small{display:block;opacity:.8;font-size:.75rem}
+.outfit-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.outfit-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;font-size:.85rem}.outfit-btn small{opacity:.8;font-size:.72rem}
+.outfit-btn.on{box-shadow:0 0 0 2px #fbbf24}
+.swatch{width:26px;height:26px;border-radius:6px;border:2px solid #0b1026;display:block}

@@ -9,7 +9,7 @@ function packImg_(name){if(!PACK_IMG[name]){const i=new Image();i.src="assets/pa
 const MS_SHEETS={ms_villager_f:1,ms_villager_m:1};
 const MS_FOOT=43;       // แถวล่างสุดของเท้าในช่อง 64×64
 function drawMsChar_(c,key,dir,fx,fy,camX,camY,ent,now){
-  const img=packImg_(key);if(!img.complete||!img.naturalWidth)return false;
+  const img=(typeof outfitImg_==="function"&&outfitImg_(key))||packImg_(key);if(!(img.naturalWidth||(img.getContext&&img.width)))return false;
   const moving=ent&&ent.t<1,k=Math.floor(now/135)%6;
   let cell,flip=false;
   if(!moving)cell=dir==="up"?1:dir==="down"?0:2;

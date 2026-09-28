@@ -601,6 +601,7 @@ function gainXp_(amount){
 async function endBattle_(won){
   if(B.over)return;
   B.over=true;clearInterval(B.timer);if(won)playerAct_("win");
+  if(typeof recordBattle_==="function")recordBattle_(B,won);
   const e=B.enemy,p=B.player,first=!B.prevClears;
   const total=B.correct+B.wrong,acc=total?Math.round(B.correct/total*100):0;
   const hpPct=p.hp/p.maxHp,stars=won?(hpPct>=0.7?3:hpPct>=0.35?2:1):0;

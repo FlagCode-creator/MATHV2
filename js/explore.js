@@ -325,6 +325,7 @@ function drawExplore_(now){
     ents.push({y:y1+0.1,draw:()=>drawStoneGate_(c,gx,y0,y1,gid,camX,camY,now,anim)});
   });
   if(X.m.interior)interiorEnts_(ents,c,camX,camY);
+  farmEnts_(ents,c,camX,camY,now);
   if(X.bridgeAnim)ents.push({y:-1,draw:()=>drawBridgeBuild_(c,camX,camY,now)});
   (X.m.labels||[]).forEach(l=>ents.push({y:l.y-0.6,draw:()=>{
     const bx=l.x*TS+1-camX,by=l.y*TS-9-camY;
@@ -551,6 +552,7 @@ function openExMenu(){
     <div class="ex-menu-quest"><b>ภารกิจตอนนี้</b><p>📜 ${esc(objective_())}</p>
       <small>${"ABCDE".split("").map(z=>`${ZONE_NAMES[z]} ${e.open[EXPLORE_MAPS.field.zones.find(q=>q.id===z).gate]?"✅":`${Math.min(e.kills[z],QUEST_KILLS)}/${QUEST_KILLS}`}`).join(" · ")}</small></div>
     <div class="ex-menu-items">${ITEM_ORDER.map(k=>`<span class="chip">${ITEMS[k].icon} ${save.items[k]||0}</span>`).join("")}${e.key?`<span class="chip">🗝️ กุญแจ</span>`:""}</div>
+    <div class="ex-menu-row"><button type="button" class="btn btn-ghost" onclick="openDaily_()">📜 ภารกิจรายวัน</button><button type="button" class="btn btn-ghost" onclick="openBook_()">📖 สมุดมอนสเตอร์</button></div>
     <button type="button" class="btn btn-lime btn-block" onclick="closeExMenu();stopExplore_();openSkills('explore')">🌳 ต้นไม้ทักษะ${pts?` (มีแต้ม ${pts})`:""}</button>
     <button type="button" class="btn btn-ghost btn-block" onclick="closeExMenu();stopExplore_();openHero('explore')">🧙 ตัวละคร</button>
     <button type="button" class="btn btn-ghost btn-block" onclick="exitExploreToMap()">🗺️ ออกไปแผนที่โลก</button>
@@ -603,6 +605,7 @@ async function interact_(){
   const npc=npcAt_(tx,ty);if(npc)return talkNpc_(npc);
   const mon=monAt_(tx,ty);if(mon)return startFieldBattle_(mon);
   if(bossAt_(tx,ty))return startBossBattle_();
+  if(tileAt_(tx,ty)==="F")return farmInteract_(tx,ty);
   const prop=propAt_(tx,ty);if(prop&&prop.act)return usePropAct_(prop);
   if(X.m.board&&ty===1&&tx>=X.m.board[0]&&tx<=X.m.board[1])return boardTip_();
   const door=(X.m.doors||[]).find(d=>d.x===tx&&d.y===ty);
@@ -611,7 +614,7 @@ async function interact_(){
     return exSay_([{sprite:save.avatar?"hero:"+heroKey(save.avatar):"npc_kid",name:save.name,text:door.text}]);
   }
   const t=tileAt_(tx,ty);
-  if(t==="s"){const s=(X.m.signs||[]).find(s=>s.x===tx&&s.y===ty);if(s)return exSay_([{sprite:"obj_sign",name:"ป้าย",text:s.text}])}
+  if(t==="s"){const s=(X.m.signs||[]).find(s=>s.x===tx&&s.y===ty);if(s&&s.daily)return openDaily_();if(s)return exSay_([{sprite:"obj_sign",name:"ป้าย",text:s.text}])}
   if(t==="k"){const tb=(X.m.tablets||[]).find(s=>s.x===tx&&s.y===ty);if(tb){SFX.item();return exSay_([{sprite:"obj_tablet",name:`แผ่นหินสลัก (${tb.i+1}/3)`,text:`บนแผ่นหินสลักตัวเลขไว้ว่า "${e.puz.tablets[tb.i]}" — จดไว้ให้ดีนะ!`}])}}
   if(t==="w")return exSay_([{sprite:"obj_well",name:"บ่อน้ำ",text:"น้ำในบ่อใสแจ๋ว สะท้อนเงาของเธอที่ดูเก่งขึ้นทุกวัน ✨"}]);
   if(t==="n")return exSay_([{sprite:"obj_carrot",name:"แครอท",text:"แครอทของลุงชาวสวน อย่าเพิ่งถอนนะ! แต่ลองนับดูว่ามีทั้งหมดกี่ต้น"}]);
@@ -745,7 +748,7 @@ function exploreBattleEnded(won,hpLeft){
   if(won){
     e.hp=Math.min(effMaxHp(),hpLeft+(skillLv("def")>=4?Math.round(effMaxHp()*0.25):0));
     if(pend.boss){e.bossDone=true;X.pending={boss:true}}
-    else if(pend.monster){e.kills[pend.stage]=(e.kills[pend.stage]||0)+1;X.pending={defeated:pend.monster,kill:pend.stage};if(String(pend.monster).indexOf("night_")===0)NIGHT_STATE.gone[pend.monster.slice(6)]=true}
+    else if(pend.monster){e.kills[pend.stage]=(e.kills[pend.stage]||0)+1;X.pending={defeated:pend.monster,kill:pend.stage};dailyAdd_("kill");if(String(pend.monster).indexOf("night_")===0)NIGHT_STATE.gone[pend.monster.slice(6)]=true}
   }else{
     const sp=EXPLORE_MAPS.village.spawn;e.hp=effMaxHp();e.map="village";e.x=sp.x;e.y=sp.y;
     X.pending={lost:true};

@@ -153,6 +153,13 @@ function paintGround_(buf,x,y,frame,T){
       for(let j=0;j<3;j++)for(let i=0;i<7;i++){const X=bx+i;if(X>=0&&X<16)px(X,r*4+j,j===0?"#8290ae":col)}}}
     return;
   }
+  if(ch==="F"){   // แปลงผัก: ดินพรวนเป็นร่อง มีขอบไม้
+    for(let j=0;j<16;j++)for(let i=0;i<16;i++){const h=hash2_(ox+i,oy+j,91);px(i,j,j%4===0?"#5a3420":j%4===1?"#94603c":h<0.1?"#6a4028":"#7a4a30")}
+    const edge=(dx,dy)=>T(x+dx,y+dy)!=="F";
+    if(edge(0,-1))rect(0,0,16,2,"#a4552e");if(edge(0,1))rect(0,14,16,2,"#6e3420");
+    if(edge(-1,0))rect(0,0,2,16,"#8a4428");if(edge(1,0))rect(14,0,2,16,"#6e3420");
+    return;
+  }
   if(ch==="n"){
     for(let j=0;j<16;j++)for(let i=0;i<16;i++)px(i,j,j%5===3?"#5a3420":j%5===2?"#94603c":"#7a4a30");
     return;
