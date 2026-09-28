@@ -85,10 +85,10 @@ function critCutIn_(avatar){
 
 /* ---- มอนสเตอร์แตกเป็นพิกเซล (ใช้สีจากภาพจริง) + เหรียญ ---- */
 function enemyBurst_(){
-  const layer=document.getElementById("fx-layer"),img=document.querySelector("#enemy-sprite img");if(!layer)return;
+  const layer=document.getElementById("fx-layer"),img=document.querySelector("#enemy-sprite img, #enemy-sprite canvas");if(!layer)return;
   let colors=["#a3e635","#65a30d","#fef08a"];
   try{
-    if(img&&img.complete){const cv=document.createElement("canvas");cv.width=cv.height=16;const c=cv.getContext("2d");c.drawImage(img,0,0,16,16);
+    if(img&&(img.complete||img.getContext)){const cv=document.createElement("canvas");cv.width=cv.height=16;const c=cv.getContext("2d");c.drawImage(img,0,0,16,16);
       const d=c.getImageData(0,0,16,16).data,cs=[];for(let i=0;i<d.length;i+=4)if(d[i+3]>200)cs.push(`rgb(${d[i]},${d[i+1]},${d[i+2]})`);
       if(cs.length>4){colors=[];for(let i=0;i<14;i++)colors.push(cs[Math.floor(Math.random()*cs.length)])}}
   }catch(e){}

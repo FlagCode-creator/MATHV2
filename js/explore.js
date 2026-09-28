@@ -186,16 +186,17 @@ function updateNpcs_(now){
     if(n.t<1){n.t=Math.min(1,(now-n.t0)/260);n.fx=n.sx+(n.x-n.sx)*n.t;n.fy=n.sy+(n.y-n.sy)*n.t;return}
     if(!n.wander&&!X.busy&&now>=n.next){n.next=now+rng(2500,5500);n.dir=pickOne(["down","down","left","right"]);return}   // ยืนเฉย ๆ ก็หันมองรอบตัว
     if(!n.wander||X.busy||now<n.next)return;
-    n.next=now+rng(1800,4000);
+    n.next=now+(n.range?rng(500,1600):rng(1800,4000));
     const dir=pickOne(Object.keys(DIRS)),[dx,dy]=DIRS[dir],nx=n.x+dx,ny=n.y+dy;n.dir=dir;
-    if(Math.abs(nx-n.ox)>2||Math.abs(ny-n.oy)>1||blocked_(nx,ny)||npcAt_(nx,ny)||monAt_(nx,ny)||(nx===X.p.x&&ny===X.p.y))return;
+    if(Math.abs(nx-n.ox)>(n.range||2)||Math.abs(ny-n.oy)>(n.rangeY||1)||blocked_(nx,ny)||npcAt_(nx,ny)||monAt_(nx,ny)||(nx===X.p.x&&ny===X.p.y))return;
     n.sx=n.x;n.sy=n.y;n.x=nx;n.y=ny;n.t0=now;n.t=0;n.step++;dust_(n.sx*TS+8,n.sy*TS+TS,1);
   });
 }
 function updateMonsters_(now){
+  updateNightMons_(now);
   X.mons.forEach(m=>{
     if(m.t<1){m.t=Math.min(1,(now-m.t0)/MON_STEP_MS);m.fx=m.sx+(m.x-m.sx)*m.t;m.fy=m.sy+(m.y-m.sy)*m.t;
-      if(m.t>=1&&monStyle_(MONSTERS[m.stage].sprite)==="hop")dust_(m.x*TS+8,m.y*TS+TS,3);return}
+      if(m.t>=1&&!m.night&&monStyle_(MONSTERS[m.stage].sprite)==="hop")dust_(m.x*TS+8,m.y*TS+TS,3);return}
     if(X.busy||now<m.next)return;
     m.next=now+rng(500,1300);
     if(Math.random()<0.25){if(Math.random()<0.6)m.flip=!m.flip;return}   // หยุดมองซ้าย-ขวา
@@ -239,6 +240,7 @@ function drawExplore_(now){
     c.font="7px sans-serif";c.textAlign="center";c.textBaseline="middle";c.fillText(l.icon,bx+7,by+5.5)}}));
   X.npcs.forEach(n=>ents.push({y:n.fy,draw:()=>{drawChar_(c,n.sprite,n.dir||"down",n.t<1?(n.step%2?1:2):0,n.fx,n.fy,camX,camY,n,now);grassOver_(c,n.fx,n.fy,camX,camY,now)}}));
   X.mons.forEach(m=>ents.push({y:m.fy,draw:()=>{
+    if(m.night){drawTinyMon_(c,m,camX,camY,now);return}
     const art=customSpriteInfo(MONSTERS[m.stage].sprite);
     if(art)drawArt_(c,art,Math.min(MON_ART_H,MON_ART_W*art.h/art.w),m.fx*TS+8-camX,m.fy*TS+TS-camY,m,!!m.flip,now,monStyle_(MONSTERS[m.stage].sprite));
     else drawSprite_(c,MONSTERS[m.stage].sprite,m.fx,m.fy,camX,camY,Math.floor(now/350+m.x)%2,m.flip);grassOver_(c,m.fx,m.fy,camX,camY,now)}}));
@@ -250,6 +252,7 @@ function drawExplore_(now){
   const moving=p.t<1;
   ents.push({y:p.fy,draw:()=>{drawChar_(c,"hero:"+heroKey(save.avatar),p.dir,moving?(p.step%2?1:2):0,p.fx,p.fy,camX,camY,p,now);grassOver_(c,p.fx,p.fy,camX,camY,now)}});
   ambientUnder_(c,camX,camY,vw,vh,now);
+  critterEnts_(ents,c,camX,camY,now,now-(X.lastDraw||now));
   drawDust_(c,camX,camY,now);
   ents.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());
   ambientOver_(c,camX,camY,vw,vh,now,Math.min(60,now-(X.lastDraw||now)));X.lastDraw=now;
@@ -263,6 +266,7 @@ function drawExplore_(now){
 // ตัวละครที่มีภาพใหญ่ (portraits) → ใช้ภาพนั้นแบบย่อ เดินเด้งโยกซ้ายขวา · ไม่มีภาพ → ตัวเดินที่วาดด้วยโค้ด (16×32)
 const CHAR_ART_H=32,MON_ART_H=24,BOSS_ART_H=42,MON_ART_W=26,BOSS_ART_W=46;
 function drawChar_(c,spriteKey,dir,frame,fx,fy,camX,camY,ent,now){
+  if(MS_SHEETS[spriteKey]&&drawMsChar_(c,spriteKey,dir,fx,fy,camX,camY,ent,now||performance.now()))return;   // ชาวบ้านเดิน 4 ทิศ
   const walk=walkFrame(spriteKey,dir,frame);   // มี sprite sheet เดิน 4 ทิศ → ใช้ท่าเดินจริง
   if(walk){drawArt_(c,walk,CHAR_ART_H,fx*TS+8-camX,fy*TS+TS-camY,ent,false,now||performance.now(),"sheet");return}
   const art=portraitInfo(spriteKey);
@@ -550,6 +554,14 @@ async function talkNpc_(npc){
     await exSay_([say(npc,"พักผ่อนสักหน่อยไหมจ๊ะ? ที่นี่ฟรีสำหรับนักผจญภัยตัวน้อย 🛏️")]);
     e.hp=effMaxHp();persist();SFX.heal();toast("💤 พักผ่อนแล้ว HP เต็ม!");updateExHud_();return;
   }
+  if(npc.id==="vill_f")return exSay_([say(npc,pickOne([
+    "ไก่ที่บ้านฉันออกไข่วันละ 3 ฟอง สัปดาห์หนึ่งก็ได้ 21 ฟองแน่ะ!",
+    "ถ้าอยากคิดเลขเร็ว ลองท่องสูตรคูณก่อนนอนทุกคืนสิ",
+    "ครูแฟล็กใจดีมากเลยนะ แต่ถ้าไม่ทำการบ้านล่ะก็... 😅"]),"happy")]);
+  if(npc.id==="vill_m")return exSay_([say(npc,pickOne([
+    "วัวของลุงชาวสวนกินหญ้าวันละ 12 กิโล ลองคิดดูสิว่าอาทิตย์หนึ่งกินกี่กิโล",
+    "ระวังนะ ได้ยินว่ากลางคืนมีปีศาจออกมาเดินในทุ่ง!",
+    "เดินไปตามถนนทางตะวันออก จะเจอทุ่งหญ้าจำนวน"]))]);
   if(npc.id==="kid")return exSay_([say(npc,pickOne([
     "รู้ไหม ถ้าตอบเร็ว ๆ ตอนแถบเวลายังเป็นสีทอง จะตีคริติคอลแรงขึ้นครึ่งหนึ่งเลยนะ!",
     "ตอบถูกติดกันหลาย ๆ ข้อ คอมโบจะทำให้ตีแรงขึ้นเรื่อย ๆ",
@@ -617,7 +629,8 @@ function startFieldBattle_(mon){
   X.pending={monster:mon.id,stage:mon.stage};
   SFX.charge();
   const e=save.explore;
-  startBattle("stage",mon.stage,{origin:"explore",hp:e.hp,startSub:1+Math.min(4,e.kills[mon.stage])});
+  const night=mon.night?{name:NIGHT_MON[mon.night].name,tiny:mon.night}:null;
+  startBattle("stage",mon.stage,{origin:"explore",hp:e.hp,startSub:1+Math.min(4,e.kills[mon.stage]),enemy:night});
 }
 async function startBossBattle_(){
   if(!X||X.busy)return;
@@ -633,7 +646,7 @@ function exploreBattleEnded(won,hpLeft){
   if(won){
     e.hp=Math.min(effMaxHp(),hpLeft+(skillLv("def")>=4?Math.round(effMaxHp()*0.25):0));
     if(pend.boss){e.bossDone=true;X.pending={boss:true}}
-    else if(pend.monster){e.kills[pend.stage]=(e.kills[pend.stage]||0)+1;X.pending={defeated:pend.monster,kill:pend.stage}}
+    else if(pend.monster){e.kills[pend.stage]=(e.kills[pend.stage]||0)+1;X.pending={defeated:pend.monster,kill:pend.stage};if(String(pend.monster).indexOf("night_")===0)NIGHT_STATE.gone[pend.monster.slice(6)]=true}
   }else{
     const sp=EXPLORE_MAPS.village.spawn;e.hp=effMaxHp();e.map="village";e.x=sp.x;e.y=sp.y;
     X.pending={lost:true};

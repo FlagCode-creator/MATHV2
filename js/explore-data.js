@@ -41,7 +41,9 @@ const EXPLORE_MAPS={
       {id:"flag",x:18,y:14,sprite:"npc_flag",name:"ครูแฟล็ก",dir:"down"},
       {id:"shop",x:6,y:6,sprite:"npc_shop",name:"ป้าแม่ค้า",dir:"down"},
       {id:"inn",x:25,y:6,sprite:"npc_inn",name:"เจ้าของโรงแรม",dir:"down"},
-      {id:"kid",x:30,y:15,sprite:"npc_kid",name:"น้องต้นกล้า",dir:"left",wander:true}
+      {id:"kid",x:30,y:15,sprite:"npc_kid",name:"น้องต้นกล้า",dir:"left",wander:true},
+      {id:"vill_f",x:8,y:12,sprite:"ms_villager_f",name:"ป้าสมศรี",dir:"right",wander:true,range:5},
+      {id:"vill_m",x:32,y:11,sprite:"ms_villager_m",name:"ลุงบุญมา",dir:"left",wander:true,range:4}
     ],
     doors:[
       {x:5,y:5,act:"shop"},{x:24,y:5,act:"inn"},

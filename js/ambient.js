@@ -11,7 +11,10 @@ function dayLight_(ph){
   if(ph<0.85)return {dark:0.42,warm:0};
   return {dark:lerp(0.42,0,(ph-0.85)/0.15),warm:lerp(0.14,0,(ph-0.9)/0.1)};
 }
-function dayPhase_(now){if(!X.day0)X.day0=now-0.04*DAY_MS;return((now-X.day0)/DAY_MS)%1}
+// เวลาในเกมเก็บไว้นอก X (X ถูกสร้างใหม่ทุกครั้งที่โหลดแผนที่/กลับจากการต่อสู้)
+let DAY0_=null;
+function dayPhase_(now){if(DAY0_===null)DAY0_=now-0.04*DAY_MS;return((now-DAY0_)/DAY_MS)%1}
+function dayIndex_(now){if(DAY0_===null)dayPhase_(now);return Math.floor((now-DAY0_)/DAY_MS)}
 
 function ambientInit_(){
   const A=X.amb={butter:[],leaves:[],flies:[],clouds:[],lastLeaf:0};

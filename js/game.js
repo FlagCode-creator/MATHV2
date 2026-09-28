@@ -59,6 +59,7 @@ function dialogArt_(l,pose){
   }
   const big=customSpriteInfo(l.sprite);
   if(big)return {actor:true,base:big.url,monster:true};
+  if(typeof MS_SHEETS!=="undefined"&&MS_SHEETS[l.sprite])return {actor:false,base:msFaceURL_(l.sprite)};
   return {actor:false,base:spriteURL(l.sprite)};
 }
 function showDialogLine_(){
@@ -275,6 +276,10 @@ async function startBattle(kind,ref,opts){
   if(kind==="stage"){
     wi=worldOfStage(ref);const s=monsterStats(ref),m=MONSTERS[ref];
     enemy={name:m.name,sprite:m.sprite,img:null,hp:s.hp,maxHp:s.hp,atk:s.atk,gold:s.gold,xp:s.xp};
+    if(opts.enemy){   // ปีศาจกลางคืน: HP ×1.6 · โจมตี ×1.2 · เหรียญ ×2.5 · EXP ×2
+      const o=opts.enemy;enemy.name=o.name;enemy.sprite=null;enemy.tiny=o.tiny;
+      enemy.hp=enemy.maxHp=Math.round(s.hp*1.6);enemy.atk=Math.round(s.atk*1.2);enemy.gold=Math.round(s.gold*2.5);enemy.xp=Math.round(s.xp*2);
+    }
   }else{
     wi=ref;const w=WORLDS[wi],s=bossStats(wi);phases=s.phases;
     enemy={name:w.boss.name,sprite:w.boss.sprite,img:w.boss.final?mascotSrc(FINAL_BOSS_PHASES[0].mood):null,hp:s.hp,maxHp:s.hp,atk:s.atk,gold:s.gold,xp:s.xp,final:!!w.boss.final};
@@ -307,11 +312,13 @@ async function startBattle(kind,ref,opts){
   nextTurn_();
 }
 function renderEnemySprite_(){
-  const e=B.enemy,el=$("enemy-sprite");
+  const e=B.enemy,el=$("enemy-sprite");el._tiny=null;
+  if(e.tiny){tinyBattleStart_(el,e.tiny);return}
   el.innerHTML=e.img?`<img class="pixelated" src="${e.img}" alt="${esc(e.name)}">`:spriteImg(e.sprite,B.kind==="boss"?168:136);
 }
 // ภาพท่าของมอนสเตอร์/บอส (ถ้ามีใน manifest: poses) — attack · hurt ชั่วคราว · rage = ร่างคลั่ง (ใช้ถาวรจนจบการต่อสู้)
 function enemyAct_(act){
+  if(B.enemy.tiny){tinyBattleAct_($("enemy-sprite"),act==="attack"?"attack01":act==="hurt"?"hurt":act==="death"?"death":"idle");return}
   const e=B.enemy,el=$("enemy-sprite"),img=el&&el.querySelector("img");if(!img||!e.sprite)return;
   const alt=poseInfo(e.sprite,act);if(!alt)return;
   if(act==="rage"){img.src=img.dataset.base=alt.url;return}
@@ -600,7 +607,7 @@ async function endBattle_(won){
   let gold=0,xp=0,worldCleared=false,finalCleared=false;
   const field=B.origin==="explore"&&B.kind==="stage";
   if(won&&field){
-    save.stats.wins++;enemyBurst_();$("enemy-sprite").classList.add("dead");SFX.win();
+    save.stats.wins++;enemyAct_("death");enemyBurst_();$("enemy-sprite").classList.add("dead");SFX.win();
     gold=Math.round(e.gold*0.5)+stars*2;xp=Math.round(e.xp*0.8);
   }else if(won){
     save.stats.wins++;
