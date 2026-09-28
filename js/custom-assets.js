@@ -9,10 +9,11 @@
    - characters : sprite sheet เดิน 4 ทิศ แบบ RPG Maker (ไม่บังคับ)
    - talk       : ภาพปากอ้าของตัวละคร → สลับกับภาพปกติตอนพูด (ไม่บังคับ)
    - expressions: ภาพสีหน้า {happy, sad, surprised, angry} ของตัวละคร (ไม่บังคับ)
-   - poses      : ภาพท่าต่อสู้ {attack, hurt, win} ของตัวละคร (ไม่บังคับ)
+   - poses      : ภาพท่าต่อสู้ {attack, hurt, win} ของตัวละคร · มอนสเตอร์ {attack, hurt} · บอสเพิ่ม {rage} (ไม่บังคับ)
+   - backgrounds: ภาพฉากต่อสู้ของแต่ละดินแดน {w1 … w9} (ไม่บังคับ)
    ภาพที่มีพื้นหลังสีเรียบจะถูกตัดพื้นหลังและขอบว่างออกให้อัตโนมัติ */
 
-const CUSTOM={portraits:{},sprites:{},mapSprites:{},chars:{},talk:{},expressions:{},poses:{},loaded:false};
+const CUSTOM={portraits:{},sprites:{},mapSprites:{},chars:{},talk:{},expressions:{},poses:{},backgrounds:{},loaded:false};
 function loadImage_(src){return new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>res(null);i.src=src})}
 
 // ตัดพื้นหลังสีเรียบ (ไล่จากขอบภาพ) + ตัดขอบโปร่งใสรอบตัวละคร
@@ -43,6 +44,14 @@ function cleanImage_(img){
   return {canvas:out,url:out.toDataURL(),w:out.width,h:out.height};
 }
 
+function downscaleBg_(img){
+  let src=img,w=img.naturalWidth,h=img.naturalHeight;const W=Math.min(480,w),H=Math.round(h*W/w);
+  while(w/2>=W){const t=document.createElement("canvas");t.width=Math.round(w/2);t.height=Math.round(h/2);
+    const c=t.getContext("2d");c.imageSmoothingQuality="high";c.drawImage(src,0,0,t.width,t.height);src=t;w=t.width;h=t.height}
+  const cv=document.createElement("canvas");cv.width=W;cv.height=H;const c=cv.getContext("2d");c.imageSmoothingQuality="high";c.drawImage(src,0,0,W,H);
+  let url;try{url=cv.toDataURL()}catch(e){url=img.src}
+  return {url,w:W,h:H};
+}
 async function loadCustomAssets(){
   try{
     const r=await fetch("assets/custom/manifest.json",{cache:"no-cache"});
@@ -59,6 +68,10 @@ async function loadCustomAssets(){
     for(const g of ["expressions","poses"])await Promise.all(Object.entries(m[g]||{}).map(async([key,set])=>{
       CUSTOM[g][key]={};
       await Promise.all(Object.entries(set||{}).map(async([name,src])=>{const img=await loadImage_(base+src+ver);if(img)CUSTOM[g][key][name]=cleanImage_(img)}));
+    }));
+    // ฉากพื้นหลัง: ย่อให้กว้างไม่เกิน 480 px (ขยายกลับแบบพิกเซลคมเหมือนฉากอื่น) — ไม่ตัดพื้นหลัง
+    await Promise.all(Object.entries(m.backgrounds||{}).map(async([key,src])=>{
+      const img=await loadImage_(base+src+ver);if(img)CUSTOM.backgrounds[key]=downscaleBg_(img);
     }));
     await Promise.all(Object.entries(m.characters||{}).map(async([key,def])=>{
       const d=typeof def==="string"?{src:def}:def,img=await loadImage_(base+d.src+ver);

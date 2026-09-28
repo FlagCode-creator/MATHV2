@@ -293,6 +293,14 @@ function renderEnemySprite_(){
   const e=B.enemy,el=$("enemy-sprite");
   el.innerHTML=e.img?`<img class="pixelated" src="${e.img}" alt="${esc(e.name)}">`:spriteImg(e.sprite,B.kind==="boss"?168:136);
 }
+// ภาพท่าของมอนสเตอร์/บอส (ถ้ามีใน manifest: poses) — attack · hurt ชั่วคราว · rage = ร่างคลั่ง (ใช้ถาวรจนจบการต่อสู้)
+function enemyAct_(act){
+  const e=B.enemy,el=$("enemy-sprite"),img=el&&el.querySelector("img");if(!img||!e.sprite)return;
+  const alt=poseInfo(e.sprite,act);if(!alt)return;
+  if(act==="rage"){img.src=img.dataset.base=alt.url;return}
+  if(!img.dataset.base)img.dataset.base=img.src;
+  clearTimeout(el._t);img.src=alt.url;el._t=setTimeout(()=>{img.src=img.dataset.base},650);
+}
 function updateBattleHud_(){
   const e=B.enemy,p=B.player;
   $("enemy-name").textContent=e.name;
@@ -458,7 +466,7 @@ async function playerAttack_(dmg,crit,interrupt){
   playerAct_("attack");await sleep(160);
   e.hp=Math.max(0,e.hp-dmg);
   (crit?SFX.crit:SFX.hit)();
-  sp.classList.remove("hit");void sp.offsetWidth;sp.classList.add("hit");
+  sp.classList.remove("hit");void sp.offsetWidth;sp.classList.add("hit");enemyAct_("hurt");
   floatText_((crit?"CRIT! ":"")+"-"+dmg,crit?"crit":"");
   if(interrupt){setTimeout(()=>floatText_("ขัดจังหวะ!","miss"),250);toast("💥 ขัดจังหวะการชาร์จของบอสสำเร็จ!")}
   if(B.combo>=3&&B.combo%3===0)toast(`🔥 คอมโบ ${B.combo}! พลังโจมตีเพิ่มขึ้น`);
@@ -478,7 +486,7 @@ async function checkPhase_(){
       updateBattleHud_();
       await playDialog([FINAL_BOSS_PHASES[B.phase-1]]);
     }else{
-      updateBattleHud_();
+      enemyAct_("rage");updateBattleHud_();
       toast(`😡 ${e.name} คลั่งแล้ว! โจมตีแรงขึ้นและโจทย์ยากขึ้น`);
       await sleep(600);
     }
@@ -487,7 +495,7 @@ async function checkPhase_(){
 async function enemyAttack_(){
   const e=B.enemy,p=B.player,sp=$("enemy-sprite");
   await sleep(350);
-  sp.classList.remove("attack");void sp.offsetWidth;sp.classList.add("attack");
+  sp.classList.remove("attack");void sp.offsetWidth;sp.classList.add("attack");enemyAct_("attack");
   await sleep(250);
   if(B.shield){
     B.shield=false;SFX.block();floatText_("BLOCK!","miss");toast("🛡️ โล่ป้องกันการโจมตีไว้ได้!");

@@ -173,6 +173,8 @@ const BG_PAINTERS=[
 ];
 
 function bgURL(worldIndex){
+  const custom=typeof CUSTOM!=="undefined"&&CUSTOM.backgrounds["w"+(worldIndex+1)];   // ภาพฉากของครูเอง (manifest: backgrounds)
+  if(custom)return custom.url;
   if(BG_CACHE[worldIndex])return BG_CACHE[worldIndex];
   const cv=document.createElement("canvas");cv.width=BG_W;cv.height=BG_H;
   const ctx=cv.getContext("2d");
