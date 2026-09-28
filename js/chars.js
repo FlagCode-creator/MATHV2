@@ -85,7 +85,7 @@ const CHAR_SPECS={
   prince:{hair:"#f6d860",cloth:"#2f6fd6",accent:"#fee761",pants:"#eef2ff",shoes:"#5a3a28",gold:"#fee761",styles:["crown"]},
   npc_flag:{hair:"#211c2b",cloth:"#c2a35a",accent:"#fee761",pants:"#9c8246",shoes:"#1c1a24",gold:"#fee761",styles:["epaulet"]},
   npc_shop:{hair:"#8a5a3a",cloth:"#5da83f",accent:"#ffffff",pants:"#6b4a2b",shoes:"#4a3020",styles:["apron"]},
-  npc_inn:{hair:"#f6c860",cloth:"#e87aa0",accent:"#ffffff",pants:"#b84a78",shoes:"#6b3a50",styles:["long","skirt"]},
+  npc_inn:{hair:"#f6c860",cloth:"#e87aa0",accent:"#ffffff",pants:"#e87aa0",shoes:"#6b3a50",styles:["long","apron","skirt"]},
   npc_carpenter:{hair:"#6b4a2b",hat:"#fec640",cloth:"#f08a3a",accent:"#8a5a3a",pants:"#2f4f8a",shoes:"#4a3020",styles:["hardhat"]},
   npc_farmer:{hair:"#6b4a2b",hat:"#e8c878",cloth:"#3f7fc9",accent:"#8a5a3a",pants:"#8a6a45",shoes:"#4a3020",styles:["strawhat"]},
   npc_kid:{hair:"#e07a2a",cloth:"#e24a4a",accent:"#fee761",pants:"#2f4f8a",shoes:"#1c1a24",styles:[]}
