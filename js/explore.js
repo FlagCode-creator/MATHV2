@@ -35,6 +35,14 @@ function showExplore_(){
   X.invulnUntil=performance.now()+1200;X.busy=false;
   if(!X.running){X.running=true;X.last=performance.now();requestAnimationFrame(exLoop_)}
 }
+// แสดงข้อผิดพลาดเป็นข้อความสั้น ๆ (ให้ผู้เล่นแจ้งครูได้) และเก็บรายละเอียดล่าสุดไว้ในเครื่อง
+function reportError_(err,where){
+  const msg=(err&&err.message)||String(err);
+  try{localStorage.setItem("mq2_last_error",JSON.stringify({where,msg,stack:(err&&err.stack||"").slice(0,600),at:new Date().toISOString()}))}catch(e){}
+  if(typeof toast==="function")toast("⚠️ เกิดข้อผิดพลาด ("+where+"): "+msg.slice(0,80));
+  console.error(where,err);
+}
+window.addEventListener("error",ev=>{if($("screen-explore")&&$("screen-explore").classList.contains("active"))reportError_(ev.error||ev.message,"explore")});
 function stopExplore_(){if(X)X.running=false;X&&(X.held=null)}
 // กลับมาจากฉากต่อสู้/ร้านค้า/ทักษะ
 async function resumeExplore(){
@@ -74,8 +82,10 @@ function loadMap_(mapId,x,y,dir){
     canvas:$("ex-canvas"),frame:0,busy:false,invulnUntil:0,zone:null,pending:old.pending||null,
     px:old.px,cssScale:old.cssScale,hudPad:old.hudPad,scale:old.scale
   };
-  X.ctx=X.canvas.getContext("2d");X.propCells=propCells_(m);
-  if(blocked_(x,y)&&!(m.warps||[]).some(w=>w.x===x&&w.y===y)){X.p.x=X.p.fx=m.spawn.x;X.p.y=X.p.fy=m.spawn.y;e.x=m.spawn.x;e.y=m.spawn.y}
+  X.ctx=X.canvas.getContext("2d");X.propCells=typeof propCells_==="function"?propCells_(m):{};
+  if(blocked_(x,y)&&!(m.warps||[]).some(w=>w.x===x&&w.y===y)){
+    let best=null;for(let r=1;r<=4&&!best;r++)for(let dy=-r;dy<=r&&!best;dy++)for(let dx=-r;dx<=r;dx++){const nx=x+dx,ny=y+dy;if(Math.max(Math.abs(dx),Math.abs(dy))===r&&nx>=0&&ny>=0&&nx<X.W&&ny<X.H&&!blocked_(nx,ny)){best=[nx,ny];break}}
+    const [sx,sy]=best||[m.spawn.x,m.spawn.y];X.p.x=X.p.fx=sx;X.p.y=X.p.fy=sy;e.x=sx;e.y=sy}
   if(m.zones)m.zones.forEach(z=>z.monsters.forEach(([mx,my],i)=>{
     X.mons.push({id:z.id+i,stage:z.stage,x:mx,y:my,fx:mx,fy:my,t:1,zone:z,next:performance.now()+rng(600,2000),
       tiny:i%2?"blood":"demon",hue:(ZONE_MON[z.stage]||{}).hue||0});
@@ -96,7 +106,7 @@ function tileAt_(x,y){
 }
 function gateAt_(x,y){for(const [gid,g] of Object.entries(X.m.gates||{}))if(g.cells.some(([gx,gy])=>gx===x&&gy===y))return gid;return null}
 const inZone_=(z,x,y)=>x>=z.x0&&x<=z.x1&&y>=z.y0&&y<=z.y1;
-function blocked_(x,y){const t=tileAt_(x,y);return TILE_BLOCK.has(t)||t==="C"||!!propAt_(x,y)}
+function blocked_(x,y){const t=tileAt_(x,y);return TILE_BLOCK.has(t)||t==="C"||!!(X.propCells&&X.propCells[x+","+y])}
 function npcAt_(x,y){return X.npcs.find(n=>n.x===x&&n.y===y)}
 function monAt_(x,y){return X.mons.find(m=>m.x===x&&m.y===y)}
 function bossAt_(x,y){const b=X.m.boss;return b&&!save.explore.bossDone&&b.x===x&&b.y===y?b:null}
@@ -105,7 +115,12 @@ function bossAt_(x,y){const b=X.m.boss;return b&&!save.explore.bossDone&&b.x===x
 /* วาดพื้นแผนที่ (ทำครั้งเดียวต่อสถานะ เก็บไว้ 2 เฟรมสำหรับน้ำกระเพื่อม)            */
 /* ====================================================================== */
 function hash2_(x,y,s){let h=(x*374761393+y*668265263+(s||0)*97531)|0;h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296}
+// แคชภาพพื้นแผนที่ตามสถานะ (ประตู/สะพาน/หีบ) — เดินกลับไปแผนที่เดิมโหลดทันที ไม่ต้องวาดใหม่
+const BASE_CACHE=new Map();
+function baseKey_(){const e=save.explore;return X.mapId+"|"+JSON.stringify(e.open||{})+"|"+JSON.stringify(e.chests||{})+"|"+(farmReady_()?1:0)}
 function buildBase_(){
+  const key=baseKey_(),hit=BASE_CACHE.get(key);
+  if(hit){X.base=hit.base;X.houses=hit.houses;X.fountains=null;return}
   const T=(x,y)=>tileAt_(x,y);
   const houses=findHouses_(X.m.rows);
   X.base=[0,1].map(frame=>{
@@ -126,7 +141,7 @@ function buildBase_(){
       }
       const obj=OBJ_OF[ch];if(obj){const o=spriteCanvas(obj);if(o)c.drawImage(o,x*TS-1,y*TS-1)}
     }
-    if(X.m.interior)paintInteriorBase_(c,X.m);
+    if(X.m.interior&&typeof paintInteriorBase_==="function")paintInteriorBase_(c,X.m);
     if(farmReady_())paintForest_(c);
     // บ้านภาพ Farm RPG กว้าง 4.5 ช่อง: ช่องบ้านที่เหลือ (ยังเดินไม่ได้) ปลูกพุ่มไม้ไว้
     if(farmReady_())houses.forEach((h,i)=>{const r=farmHouseRect_(h,i);
@@ -134,6 +149,7 @@ function buildBase_(){
     return cv;
   });
   X.houses=houses;X.fountains=null;
+  BASE_CACHE.set(key,{base:X.base,houses});if(BASE_CACHE.size>8)BASE_CACHE.delete(BASE_CACHE.keys().next().value);
   if(!farmReady_())whenFarmReady_(()=>{if(X)buildBase_()});
 }
 // ต้นไม้ที่ล้อมด้วยต้นไม้ทุกด้าน (กลางป่า/ขอบแผนที่) → ไม่ต้องวาดทั้งต้น
@@ -193,14 +209,23 @@ const OBJ_OF={o:"obj_rock",f:"obj_fence",s:"obj_sign",k:"obj_tablet",c:"obj_ches
 function exLoop_(now){
   if(!X||!X.running)return;
   if(!$("screen-explore").classList.contains("active")){X.running=false;return}
+  // ลูปต้องไม่หยุด แม้เฟรมใดเฟรมหนึ่งผิดพลาด (ไม่งั้นตัวละครจะเดินไม่ได้จนกว่าจะรีเฟรช)
+  requestAnimationFrame(exLoop_);
   const dt=now-X.last;X.last=now;
   X.frame=Math.floor(now/600)%2;
-  updatePlayer_(now,dt);
-  updateMonsters_(now);
-  updateNpcs_(now);
-  updateEmotes_(now);
-  drawExplore_(now);
-  requestAnimationFrame(exLoop_);
+  try{
+    if(!X.base||!X.base[X.frame])buildBase_();          // พื้นแผนที่ยังไม่ได้วาด (โหลดพลาดก่อนหน้า) → วาดใหม่
+    updatePlayer_(now,dt);
+    updateMonsters_(now);
+    updateNpcs_(now);
+    if(typeof updateEmotes_==="function")updateEmotes_(now);
+    drawExplore_(now);
+    X.loopErrors=0;
+  }catch(err){
+    X.loopErrors=(X.loopErrors||0)+1;
+    if(X.loopErrors===1)reportError_(err,"loop");
+    X.busy=false;
+  }
 }
 const DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
 function updatePlayer_(now){
@@ -241,7 +266,11 @@ function checkZone_(){
 function warpTo_(w){
   const wrap=$("ex-wrap");wrap.classList.add("fade");
   X.busy=true;
-  setTimeout(()=>{loadMap_(w.to,w.tx,w.ty,w.dir||save.explore.dir);playBgm(screenTrack_("explore"));X.running=true;resizeExplore_();updateExHud_();wrap.classList.remove("fade");X.invulnUntil=performance.now()+1000;checkZone_()},220);
+  setTimeout(()=>{
+    try{loadMap_(w.to,w.tx,w.ty,w.dir||save.explore.dir);X.running=true;resizeExplore_();updateExHud_();X.invulnUntil=performance.now()+1000;checkZone_();playBgm(screenTrack_("explore"))}
+    catch(err){reportError_(err,"warp")}
+    finally{wrap.classList.remove("fade");if(X){X.busy=false;X.last=performance.now()}}
+  },220);
 }
 function showArea_(text){const el=$("ex-area");el.textContent=text;el.classList.remove("show");void el.offsetWidth;el.classList.add("show")}
 $("ex-area").addEventListener("animationend",ev=>ev.currentTarget.classList.remove("show"));
@@ -324,8 +353,8 @@ function drawExplore_(now){
     const gx=cells[0][0],y0=Math.min(...cells.map(c=>c[1])),y1=Math.max(...cells.map(c=>c[1]));
     ents.push({y:y1+0.1,draw:()=>drawStoneGate_(c,gx,y0,y1,gid,camX,camY,now,anim)});
   });
-  if(X.m.interior)interiorEnts_(ents,c,camX,camY);
-  farmEnts_(ents,c,camX,camY,now);
+  if(X.m.interior&&typeof interiorEnts_==="function")interiorEnts_(ents,c,camX,camY);
+  if(typeof farmEnts_==="function")farmEnts_(ents,c,camX,camY,now);
   if(X.bridgeAnim)ents.push({y:-1,draw:()=>drawBridgeBuild_(c,camX,camY,now)});
   (X.m.labels||[]).forEach(l=>ents.push({y:l.y-0.6,draw:()=>{
     const bx=l.x*TS+1-camX,by=l.y*TS-9-camY;
@@ -345,7 +374,7 @@ function drawExplore_(now){
   const moving=p.t<1;
   ents.push({y:p.fy,draw:()=>{drawChar_(c,"hero:"+heroKey(save.avatar),p.dir,moving?(p.step%2?1:2):0,p.fx,p.fy,camX,camY,p,now);grassOver_(c,p.fx,p.fy,camX,camY,now)}});
   ambientUnder_(c,camX,camY,vw,vh,now);
-  critterEnts_(ents,c,camX,camY,now,now-(X.lastDraw||now));
+  if(typeof critterEnts_==="function")critterEnts_(ents,c,camX,camY,now,now-(X.lastDraw||now));
   drawDust_(c,camX,camY,now);
   ents.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());
   ambientOver_(c,camX,camY,vw,vh,now,Math.min(60,now-(X.lastDraw||now)));X.lastDraw=now;
