@@ -1,5 +1,5 @@
 {
- "version": 3,
+ "version": 4,
  "portraits": {
   "student_m": "portraits/student_m.png",
   "student_f": "portraits/student_f.png",
@@ -17,7 +17,8 @@
   "npc_inn": "portraits/npc_inn.png",
   "npc_carpenter": "portraits/npc_carpenter.png",
   "npc_farmer": "portraits/npc_farmer.png",
-  "npc_kid": "portraits/npc_kid.png"
+  "npc_kid": "portraits/npc_kid.png",
+  "npc_flag": "portraits/npc_flag.png"
  },
  "sprites": {
   "A": "monsters/A.png",
@@ -83,6 +84,15 @@
    "sad": "expr/warrior_sad.png",
    "surprised": "expr/warrior_surprised.png",
    "angry": "expr/warrior_angry.png"
+  },
+  "npc_flag": {
+   "neutral": "expr/npc_flag_neutral.png",
+   "happy": "expr/npc_flag_happy.png",
+   "explain": "expr/npc_flag_explain.png",
+   "thinking": "expr/npc_flag_thinking.png",
+   "surprised": "expr/npc_flag_surprised.png",
+   "sad": "expr/npc_flag_sad.png",
+   "angry": "expr/npc_flag_angry.png"
   }
  },
  "poses": {

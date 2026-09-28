@@ -107,6 +107,7 @@ function mascotSay(elId,line){
 /* Title / login                                                           */
 /* ====================================================================== */
 function renderTitle(){
+  const tm=document.querySelector(".title-mascot");if(tm)tm.src=mascotSrc("welcome");
   const last=(function(){try{return localStorage.getItem(LAST_PLAYER_KEY)}catch(e){return null}})();
   const lastSave=last&&loadSave_(last);
   $("continue-box").classList.toggle("hidden",!lastSave);

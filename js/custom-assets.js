@@ -97,7 +97,8 @@ const BUST_PART=0.55;
 function bustOf_(info,tall){
   if(!info)return null;if(info.bust)return info.bust;
   if(info.h<info.w*(tall||1.15)){info.bust=info;return info}
-  const h=Math.round(info.h*BUST_PART),cv=document.createElement("canvas");cv.width=info.w;cv.height=h;
+  // ภาพเต็มตัว: เอาส่วนบน 55% · ภาพครึ่งตัวที่ยาวถึงเอว (สีหน้า): เอาหัวถึงอก สูง ≈ 1.15 เท่าของความกว้าง
+  const h=tall?Math.min(info.h,Math.round(info.w*1.15)):Math.round(info.h*BUST_PART),cv=document.createElement("canvas");cv.width=info.w;cv.height=h;
   cv.getContext("2d").drawImage(info.canvas,0,0,info.w,h,0,0,info.w,h);
   info.bust={canvas:cv,url:cv.toDataURL(),w:info.w,h};return info.bust;
 }
