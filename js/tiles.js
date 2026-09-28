@@ -74,7 +74,12 @@ function paintGround_(buf,x,y,frame,T){
   const path=()=>{
     noise(P_.base,P_.light,P_.dark,0.07,0.07,11);
     for(let k=0;k<2;k++){const i=2+Math.floor(H(k+70)*11),j=2+Math.floor(H(k+80)*11);px(i,j,P_.pebD);px(i+1,j,P_.pebD);px(i,j-1,P_.pebL)}
-
+    // รายละเอียดทางดิน: ร่องล้อเกวียนจาง ๆ · ก้อนหินมีเงา · ใบไม้ร่วง · หญ้างอก
+    if(T(x-1,y)===ch||T(x+1,y)===ch)for(let i=0;i<16;i++){if(hash2_(ox+i,oy,41)<0.7){px(i,4,P_.dark);px(i,11,P_.dark)}}
+    const r=H(120);
+    if(r<0.14){const i=3+Math.floor(H(121)*9),j=3+Math.floor(H(122)*9);rect(i,j+1,4,2,"#8f6a3e");rect(i,j,4,2,"#a8a29a");rect(i+1,j-1,2,1,"#c8c2b8");px(i,j,"#d8d2c8")}
+    else if(r<0.24){const i=2+Math.floor(H(123)*11),j=2+Math.floor(H(124)*11),col=["#d9823b","#e9b949","#c8502e"][Math.floor(H(125)*3)];px(i,j,col);px(i+1,j,col);px(i+1,j+1,col);px(i+2,j+1,"#8a4a20")}
+    else if(r<0.32){const i=2+Math.floor(H(126)*11),j=4+Math.floor(H(127)*9);px(i,j,G_.dark);px(i+1,j-1,G_.base);px(i+2,j,G_.dark);px(i+1,j,G_.deep)}
   };
   const water=()=>{
     // น้ำแบบขอบโค้ง: คำนวณระยะจากตลิ่งทุกพิกเซล → ขอบหญ้าเข้ม · ฟองคลื่น · น้ำตื้น · น้ำลึก (มุมนูนโค้งมน)
