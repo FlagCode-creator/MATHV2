@@ -256,10 +256,8 @@ function tallCanvas(kind,variant){
   let cv;
   if(kind==="tree"&&farmReady_()){
     // ต้นเมเปิลจาก Farm RPG: ต้นใหญ่ 2 แบบ (กลับด้าน) + ต้นเล็ก 1 แบบ
-    const img=farmImg_("maple"),big=variant%3!==2,src=big?[89,0,52,48]:[70,13,22,35];
-    cv=document.createElement("canvas");cv.width=src[2];cv.height=src[3]+2;const c=cv.getContext("2d");c.imageSmoothingEnabled=false;
-    if(variant%3===1){c.translate(cv.width,0);c.scale(-1,1)}
-    c.drawImage(img,src[0],src[1],src[2],src[3],0,0,src[2],src[3]);
+    const big=variant%3!==2,src=big?[90,0,50,48]:[71,13,20,35],m=mapleCrop_(src[0],src[1],src[2],src[3],variant%3===1);
+    cv=document.createElement("canvas");cv.width=src[2];cv.height=src[3]+2;cv.getContext("2d").drawImage(m,0,0);
   }else if(kind==="tree"){
     if(variant%3===2){cv=pineCanvas_(variant);}
     else{
@@ -269,14 +267,27 @@ function tallCanvas(kind,variant){
       cv=canopyCanvas_(48,64,L,[20,40,8,23],variant+5);
     }
   }else if(kind==="sunflower"){
-    cv=document.createElement("canvas");cv.width=16;cv.height=28;const c=cv.getContext("2d");
-    const r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};
-    r(7,10,2,17,"#3d7a2a");r(7,10,1,17,"#64aa3c");
-    r(3,15,4,2,"#4f9432");r(2,14,2,1,"#64aa3c");r(9,19,4,2,"#4f9432");r(12,18,2,1,"#64aa3c");
-    const cx=8,cy=6;
-    for(let j=-6;j<=6;j++)for(let i=-6;i<=6;i++){const d=Math.hypot(i,j);if(d>6.2)continue;
-      r(cx+i,cy+j,1,1,d<2.6?(hash2_(i,j,variant)<0.3?"#5a3420":"#7a4a28"):d<3.2?"#8a5a2a":d>5.4?"#d8961c":(Math.atan2(j,i)*3/Math.PI+8)%1<0.5?"#fed040":"#feae34")}
-    r(cx-6,cy,1,1,"#b87414");
+    // ทานตะวันพิกเซล 20×32: หัวดอกใหญ่ 12 กลีบ มีเงา+ขอบ · เกสรลายจุด · ก้านหนา ใบใหญ่ · พุ่มใบที่โคน (3 แบบหันต่างกัน)
+    cv=document.createElement("canvas");cv.width=20;cv.height=32;const c=cv.getContext("2d");
+    const P=(x,y,col)=>{if(x<0||y<0||x>=20||y>=32)return;c.fillStyle=col;c.fillRect(x,y,1,1)};
+    const tilt=[-0.7,0,0.7][variant%3],cx=9.5+tilt,cy=8,petal=new Set();
+    const rOf=a=>6.2+2.0*Math.pow(Math.abs(Math.cos(a*6)),0.75);
+    // ก้าน (วาดก่อน ให้หัวดอกทับ)
+    for(let y=12;y<30;y++){P(9,y,"#2d594f");P(10,y,"#3d993d");P(11,y,"#347349")}
+    // ใบใหญ่ 2 ใบ
+    const leaf=(x0,y0,dir)=>{const L=[[0,2],[1,1],[1,2],[1,3],[2,0],[2,1],[2,2],[2,3],[3,1],[3,2],[4,1],[4,2],[5,1]];
+      L.forEach(([i,j])=>P(x0+dir*i,y0+j,j===0||(j===1&&i>=3)?"#86c962":j>=3?"#2d594f":"#3d993d"));P(x0+dir*2,y0+4,"#2d594f");
+      for(let i=1;i<5;i++)P(x0+dir*i,y0+2,"#347349")};
+    leaf(8,17,-1);leaf(12,21,1);
+    // พุ่มใบที่โคน
+    [[5,28,3],[9,27,4],[14,28,3]].forEach(([bx,by,r])=>{for(let j=-r;j<=r;j++)for(let i=-r;i<=r;i++){if(i*i+j*j>r*r+1||by+j>31)continue;P(bx+i,by+j,j<-r/2?"#86c962":j>r/3?"#2d594f":"#3d993d")}});
+    // หัวดอก
+    for(let y=0;y<17;y++)for(let x=0;x<20;x++){const dx=x-cx,dy=(y-cy)*1.1,d=Math.hypot(dx,dy),a=Math.atan2(dy,dx);
+      if(d<=3.9){const ring=d>3.1;P(x,y,ring?"#5a2e12":((x+y)%2?"#6a3a16":"#8a5226"));if(!ring&&(x*3+y*5)%6===0)P(x,y,"#c08a4a");petal.add(x+","+y);continue}
+      const r=rOf(a);if(d<=r){petal.add(x+","+y);const k=(d-3.9)/(r-3.9);
+        P(x,y,dy>2&&k>0.3?"#e08a10":k>0.82?"#ffbf1a":(dx<-1.5&&dy<0&&k>0.25?"#fff08a":"#ffd43a"))}}
+    for(let y=0;y<17;y++)for(let x=0;x<20;x++){if(petal.has(x+","+y))continue;
+      if([[1,0],[-1,0],[0,1],[0,-1]].some(([a,b])=>petal.has((x+a)+","+(y+b))))P(x,y,"#9a4a0c")}
   }else if(kind==="bush"){
     cv=canopyCanvas_(16,16,[[8,9,6],[4,10,4],[12,10,4],[8,6,4]],null,variant+9);
     const c=cv.getContext("2d");if(variant%2){[[5,8],[10,7],[8,11]].forEach(([x,y])=>{c.fillStyle="#e43b44";c.fillRect(x,y,1,1)})}
@@ -322,4 +333,19 @@ function drawFarmFence_(c,x,y,T){
   if((N||S)&&!E&&!W)src=[0,16];                 // เสาแนวตั้ง
   else if(E&&W)src=[16,32];else if(E)src=[16,48];else if(W)src=[32,48];else src=[16,64];
   c.drawImage(img,src[0],src[1],16,16,x*TILE_PX,y*TILE_PX,16,16);
+}
+
+// ตัดภาพต้นเมเปิลจากแผ่น แล้วเก็บเฉพาะชิ้นที่ใหญ่ที่สุด (ตัดเศษของต้นข้าง ๆ ที่ติดมาตามขอบ)
+function mapleCrop_(sx,sy,w,h,flip){
+  const id="maple"+[sx,sy,w,h,flip?1:0].join("_");if(TALL_CACHE[id])return TALL_CACHE[id];
+  const cv=document.createElement("canvas");cv.width=w;cv.height=h;const c=cv.getContext("2d");c.imageSmoothingEnabled=false;
+  if(flip){c.translate(w,0);c.scale(-1,1)}c.drawImage(farmImg_("maple"),sx,sy,w,h,0,0,w,h);c.setTransform(1,0,0,1,0,0);
+  const img=c.getImageData(0,0,w,h),d=img.data,lab=new Int32Array(w*h).fill(-1),sizes=[];
+  for(let q0=0;q0<w*h;q0++){if(lab[q0]>=0||d[q0*4+3]<10)continue;const id2=sizes.length,st=[q0];lab[q0]=id2;let n=0;
+    while(st.length){const q=st.pop();n++;const x=q%w,y=(q-x)/w;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const X2=x+dx,Y2=y+dy;if(X2<0||Y2<0||X2>=w||Y2>=h)continue;const k=Y2*w+X2;if(lab[k]<0&&d[k*4+3]>=10){lab[k]=id2;st.push(k)}}}
+    sizes.push(n)}
+  const keep=sizes.indexOf(Math.max(...sizes));
+  for(let q=0;q<w*h;q++)if(lab[q]!==keep)d[q*4+3]=0;
+  c.putImageData(img,0,0);return TALL_CACHE[id]=cv;
 }

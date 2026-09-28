@@ -124,6 +124,7 @@ function buildBase_(){
       }
       const obj=OBJ_OF[ch];if(obj){const o=spriteCanvas(obj);if(o)c.drawImage(o,x*TS-1,y*TS-1)}
     }
+    if(farmReady_())paintForest_(c);
     // บ้านภาพ Farm RPG กว้าง 4.5 ช่อง: ช่องบ้านที่เหลือ (ยังเดินไม่ได้) ปลูกพุ่มไม้ไว้
     if(farmReady_())houses.forEach((h,i)=>{const r=farmHouseRect_(h,i);
       for(let y=h.y0+1;y<=h.y1;y++)for(let x=h.x0;x<=h.x1;x++){const cx=x*TS+8;if(cx>r.x+2&&cx<r.x+r.w-2)continue;c.drawImage(tallCanvas("bush",(x+y)%2),x*TS,y*TS)}});
@@ -131,6 +132,22 @@ function buildBase_(){
   });
   X.houses=houses;
   if(!farmReady_())whenFarmReady_(()=>{if(X)buildBase_()});
+}
+// ต้นไม้ที่ล้อมด้วยต้นไม้ทุกด้าน (กลางป่า/ขอบแผนที่) → ไม่ต้องวาดทั้งต้น
+function forestInner_(x,y){const t=(dx,dy)=>{const X2=x+dx,Y2=y+dy;return X2<0||Y2<0||X2>=X.W||Y2>=X.H||X.m.rows[Y2][X2]==="T"};
+  return t(0,1)&&t(0,-1)&&t(1,0)&&t(-1,0)&&t(1,1)&&t(-1,1)}
+// พุ่มใบ (ยอดเมเปิลไม่มีลำต้น) ใช้แทรกตามขอบป่า
+function forestClump_(v){return v?mapleCrop_(71,13,20,23,true):mapleCrop_(90,0,50,34,false)}
+// พุ่มใบป่าทึบ: พื้นเขียวเข้ม + ยอดไม้ซ้อนกันแบบสุ่ม (ไม่เป็นแถว)
+function paintForest_(c){
+  const maple=farmImg_("maple"),cells=[];
+  for(let y=0;y<X.H;y++)for(let x=0;x<X.W;x++)if(X.m.rows[y][x]==="T"&&forestInner_(x,y))cells.push([x,y]);
+  cells.forEach(([x,y])=>{c.fillStyle="#2f6b3a";c.fillRect(x*TS,y*TS,TS,TS)});
+  cells.forEach(([x,y])=>{c.fillStyle="rgba(20,50,30,.45)";c.fillRect(x*TS+Math.floor(hash2_(x,y,51)*10),y*TS+Math.floor(hash2_(x,y,52)*10),5,4)});
+  cells.sort((a,b)=>a[1]-b[1]||hash2_(a[0],a[1],53)-hash2_(b[0],b[1],53)).forEach(([x,y])=>{
+    const big=hash2_(x,y,54)<0.7,src=big?[90,0,50,34]:[71,13,20,23],jx=Math.round((hash2_(x,y,55)-0.5)*10),jy=Math.round((hash2_(x,y,56)-0.5)*8);
+    const dx=x*TS+8+jx-src[2]/2,dy=y*TS+10+jy-src[3]*0.7;
+    c.drawImage(mapleCrop_(src[0],src[1],src[2],src[3],hash2_(x,y,57)<0.5),dx,dy)});
 }
 // ตำแหน่งภาพบ้าน: ประตูในภาพตรงกับช่องประตู (D) ของแผนที่ · บ้านลำดับคี่กลับด้าน
 function farmHouseRect_(h,i){
@@ -239,14 +256,26 @@ function drawExplore_(now){
   const ty0=Math.max(0,Math.floor(camY/TS)-1),ty1=Math.min(X.H-1,Math.ceil((camY+vh)/TS)+4);
   for(let y=ty0;y<=ty1;y++)for(let x=tx0;x<=tx1;x++){
     const ch=X.m.rows[y][x];
-    if(ch==="T"){const v=Math.floor(hash2_(x,y,7)*3),tc=tallCanvas("tree",v);ents.push({y:y+0.2,draw:()=>{
-      c.fillStyle="rgba(10,30,10,.28)";c.fillRect(x*TS-5-camX,y*TS+11-camY,26,5);
-      const tx=x*TS+8-tc.width/2,ty=y*TS+17-tc.height;
+    if(ch==="T"){
+      if(forestInner_(x,y))continue;                     // กลางป่า: วาดเป็นพุ่มใบต่อเนื่องในพื้นแล้ว
+      // ขอบป่า: สุ่มต้นใหญ่/ต้นเล็ก/พุ่มใบ เหลื่อมตำแหน่ง → ไม่เป็นแถวลำต้นเรียงกัน
+      const h=hash2_(x,y,7),kind=h<0.55?0:h<0.82?2:3,tc=kind===3?forestClump_(Math.floor(hash2_(x,y,9)*2)):tallCanvas("tree",kind===0?(hash2_(x,y,8)<0.5?0:1):2);
+      const jx=Math.round((hash2_(x,y,41)-0.5)*10),jy=Math.round((hash2_(x,y,43)-0.5)*8)+(kind===3?4:0);
+      const shrub=hash2_(x,y,45)<0.45;
+      ents.push({y:y+0.2+jy/64,draw:()=>{
+      if(kind!==3){c.fillStyle="rgba(10,40,20,.22)";c.beginPath();c.ellipse(x*TS+8+jx-camX,y*TS+15+jy-camY,Math.min(15,tc.width*0.3),3.2,0,0,Math.PI*2);c.fill()}
+      const tx=x*TS+8+jx-tc.width/2,ty=y*TS+17+jy-tc.height;
       // ผู้เล่นเดินอยู่หลังพุ่มใบ → ทำต้นไม้โปร่งแสง (ไม่บังตัวละคร)
       const pcx=p.fx*TS+8,pcy=p.fy*TS+4,behind=pcy<y*TS&&pcx>tx+4&&pcx<tx+tc.width-4&&pcy>ty+4;
       if(behind)c.globalAlpha=0.45;
-      c.drawImage(tc,tx-camX,ty-camY);c.globalAlpha=1}})}
-    else if(ch==="u")ents.push({y:y+0.2,draw:()=>{const sc=tallCanvas("sunflower",(x+y)%3);c.drawImage(sc,x*TS-camX,y*TS+16-28-camY+(Math.floor(now/900+x)%2?0:0))}});
+      c.drawImage(tc,tx-camX,ty-camY);
+      if(shrub&&kind!==3)c.drawImage(tallCanvas("bush",(x+y)%2),x*TS+jx+(hash2_(x,y,47)<0.5?-7:7)-camX,y*TS+4+jy-camY);   // พุ่มไม้ที่โคนต้น
+      c.globalAlpha=1}})}
+    else if(ch==="u")ents.push({y:y+0.2,draw:()=>{   // ทานตะวัน: ดอกโยกตามลม (ลำต้นอยู่กับที่)
+      const v=(x*7+y*3)%3,sc=tallCanvas("sunflower",v),sway=Math.sin(now/650+x*0.9+y*0.4),dx=Math.round(sway*1.2),W=sc.width,HD=17;
+      const bx=x*TS+8-W/2-camX,by=y*TS+16-sc.height+[0,-3,2][v]-camY;
+      c.fillStyle="rgba(10,40,20,.22)";c.beginPath();c.ellipse(x*TS+8-camX,y*TS+15-camY,7,2.4,0,0,Math.PI*2);c.fill();
+      c.drawImage(sc,0,HD,W,sc.height-HD,bx,by+HD,W,sc.height-HD);c.drawImage(sc,0,0,W,HD,bx+dx,by,W,HD)}});
     else if(ch==="l")ents.push({y:y+0.2,draw:()=>c.drawImage(tallCanvas("lamp",0),x*TS-camX,y*TS+16-32-camY)});
   }
   if(farmReady_())(X.houses||[]).forEach((h,i)=>{

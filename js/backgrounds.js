@@ -219,8 +219,8 @@ function farmBattleBg_(night){
   // บ้าน + ต้นไม้ + รั้ว (วาดทับด้วยภาพจากชุด แล้วหรี่แสงตอนกลางคืน)
   const put=(img,sx,sy,w,h,dx,dy,flip)=>{c.save();if(flip){c.translate(dx+w,dy);c.scale(-1,1);dx=0;dy=0}c.drawImage(img,sx,sy,w,h,dx,dy,w,h);c.restore()};
   const house=farmImg_("house"),maple=farmImg_("maple"),fence=farmImg_("fence");
-  put(maple,70,13,22,35,4,GY-33);put(house,148,3,72,95,14,GY-86+6);put(maple,89,0,52,48,78,GY-44);
-  put(maple,89,0,52,48,176,GY-45,true);put(maple,70,13,22,35,160,GY-32);put(maple,70,13,22,35,226,GY-31,true);
+  c.drawImage(mapleCrop_(71,13,20,35,false),4,GY-33);put(house,148,3,72,95,14,GY-86+6);c.drawImage(mapleCrop_(90,0,50,48,false),78,GY-44);
+  c.drawImage(mapleCrop_(90,0,50,48,true),176,GY-45);c.drawImage(mapleCrop_(71,13,20,35,false),160,GY-32);c.drawImage(mapleCrop_(71,13,20,35,true),226,GY-31);
   for(let x=98;x<176;x+=16)c.drawImage(fence,16,32,16,16,x,GY-10,16,16);
   if(night){c.fillStyle="rgba(16,24,70,.38)";c.fillRect(0,GY-90,W,H);
     // หน้าต่างบ้านมีไฟ
