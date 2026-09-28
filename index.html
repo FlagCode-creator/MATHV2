@@ -14,7 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
 <!-- ?v= คือเลขเวอร์ชันไฟล์: service worker ของเว็บหลักแคชไฟล์ .css/.js แบบ cache-first
      แก้ไฟล์ไหนแล้วให้เพิ่มเลข ?v= ของไฟล์นั้น ผู้เล่นจะได้โหลดไฟล์ใหม่ทันที -->
-<link rel="stylesheet" href="css/game.css?v=13">
+<link rel="stylesheet" href="css/game.css?v=14">
 </head>
 <body>
 <div id="app">
@@ -271,12 +271,15 @@
  </div>
 
  <div id="dialog" class="dialog hidden" onclick="advanceDialog()">
-  <div class="dialog-box">
-   <img id="dialog-img" class="dialog-img pixelated" alt="ครูแฟล็ก">
-   <div class="dialog-text">
-    <b id="dialog-name" class="dialog-name">ครูแฟล็ก</b>
-    <p id="dialog-line"></p>
-    <span class="dialog-next">แตะเพื่อไปต่อ ▼</span>
+  <div class="dialog-wrap">
+   <div id="dialog-actor" class="dialog-actor"><div id="dialog-pose" class="dialog-pose"><img id="dialog-img" class="dialog-img pixelated" alt=""></div></div>
+   <div class="dialog-box">
+    <img id="dialog-icon" class="dialog-icon pixelated hidden" alt="">
+    <div class="dialog-text">
+     <b id="dialog-name" class="dialog-name">ครูแฟล็ก</b>
+     <p id="dialog-line"></p>
+     <span id="dialog-next" class="dialog-next">แตะเพื่อไปต่อ ▼</span>
+    </div>
    </div>
   </div>
  </div>
@@ -290,13 +293,13 @@
 <script src="js/backgrounds.js?v=1"></script>
 <script src="js/chars.js?v=12"></script>
 <script src="js/tiles.js?v=11"></script>
-<script src="js/custom-assets.js?v=12"></script>
+<script src="js/custom-assets.js?v=13"></script>
 <script src="js/skills.js?v=1"></script>
 <script src="js/explore-data.js?v=11"></script>
-<script src="js/explore.js?v=12"></script>
+<script src="js/explore.js?v=14"></script>
 <script src="js/data.js?v=2"></script>
 <script src="js/save.js?v=2"></script>
-<script src="js/audio.js?v=1"></script>
-<script src="js/game.js?v=12"></script>
+<script src="js/audio.js?v=2"></script>
+<script src="js/game.js?v=13"></script>
 </body>
 </html>

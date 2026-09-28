@@ -24,26 +24,75 @@ function showScreen(id){
 }
 function persist(){if(save){save.lastPlayed=Date.now();writeSave_(save)}}
 
-/* ---- ครูแฟล็กพูด (กล่องบทสนทนาเต็มจอ) — คืน Promise เมื่ออ่านจบ ---- */
+/* ---- บทสนทนา (เต็มจอ) — ภาพครึ่งตัวยืนเหนือกล่อง ข้อความขึ้นทีละตัว ตัวละครขยับตามจังหวะพูด · คืน Promise เมื่ออ่านจบ
+   บรรทัด: {mood, text} = ครูแฟล็ก · {sprite, name, text, pose?} = ตัวละครอื่น (pose: happy | sad | surprised | angry | shy) ---- */
 let dialogQueue=[],dialogDone=null;
+const DLG={who:null,timer:null,full:"",art:null,open:false};
+// อารมณ์ของครูแฟล็ก (ชื่อไฟล์ภาพ) → ท่าทาง
+const MOOD_POSE={happy:"happy",excited:"happy",celebrate:"happy",wave:"happy",hello:"happy",welcome:"happy",
+  shocked:"surprised",confused:"surprised",sad:"sad",angry:"angry",furious:"angry",determined:"angry",shy:"shy"};
+const POSE_ANIM={happy:"hop",surprised:"shock",sad:"droop",angry:"rage",shy:"sway"};
+const graphemes_=t=>{try{if(window.Intl&&Intl.Segmenter)return Array.from(new Intl.Segmenter("th",{granularity:"grapheme"}).segment(t),x=>x.segment)}catch(e){}return Array.from(t)};
 function playDialog(lines){
   return new Promise(res=>{
-    dialogQueue=lines.slice();dialogDone=res;
+    dialogQueue=lines.slice();dialogDone=res;DLG.who=null;
     $("dialog").classList.remove("hidden");showDialogLine_();
   });
 }
+// เลือกภาพ: ครึ่งตัว (ตัวละครที่มีภาพใหญ่) · ภาพใหญ่ของมอนสเตอร์ · หรือไอคอนเล็กในกล่อง (ป้าย หีบ ฯลฯ)
+function dialogArt_(l,pose){
+  if(!l.sprite)return {actor:true,base:mascotSrc(l.mood||"neutral")};
+  const bust=bustInfo(l.sprite);
+  if(bust){
+    const ex=pose&&expressionBust(l.sprite,pose),t=!ex&&talkBust(l.sprite);
+    return {actor:true,base:(ex||bust).url,talk:t?t.url:null};
+  }
+  const big=customSpriteInfo(l.sprite);
+  if(big)return {actor:true,base:big.url,monster:true};
+  return {actor:false,base:spriteURL(l.sprite)};
+}
 function showDialogLine_(){
-  const l=dialogQueue.shift();
-  const big=l.sprite&&(portraitInfo(l.sprite)||customSpriteInfo(l.sprite)),img=$("dialog-img");
-  img.src=big?big.url:l.sprite?spriteURL(l.sprite):mascotSrc(l.mood);
-  img.classList.toggle("smooth",!!big&&big.w>96);
+  const l=dialogQueue.shift(),pose=l.pose||MOOD_POSE[l.mood],art=dialogArt_(l,pose);
+  const img=$("dialog-img"),icon=$("dialog-icon"),actor=$("dialog-actor"),poseEl=$("dialog-pose");
+  stopTyping_();
+  $("dialog").classList.toggle("no-actor",!art.actor);
+  const who=(l.sprite||"flag")+"|"+(l.name||"");
+  if(art.actor){
+    img.src=art.base;icon.classList.add("hidden");
+    actor.classList.toggle("monster",!!art.monster);
+    if(who!==DLG.who){actor.classList.remove("enter");void actor.offsetWidth;actor.classList.add("enter")}
+  }else{icon.src=art.base;icon.classList.remove("hidden")}
+  DLG.who=who;
+  poseEl.className="dialog-pose";
+  const anim=POSE_ANIM[pose];if(anim){void poseEl.offsetWidth;poseEl.classList.add("pose-"+anim)}
   $("dialog-name").textContent=l.name||"ครูแฟล็ก";
-  $("dialog-line").textContent=l.text;
+  typeLine_(l.text||"",art);
+}
+function typeLine_(text,art){
+  const el=$("dialog-line"),g=graphemes_(text),img=$("dialog-img");
+  let i=0,open=false;
+  el.textContent="";DLG.full=text;DLG.art=art;
+  $("dialog-next").classList.add("wait");$("dialog-actor").classList.add("talking");
+  if(!g.length){finishTyping_();return}
+  DLG.timer=setInterval(()=>{
+    el.textContent+=g[i++];
+    if(i%3===0&&g[i-1].trim())SFX.blip();
+    if(art.talk&&i%4===0){open=!open;img.src=open?art.talk:art.base}   // ปากขยับ: สลับภาพปากอ้า/ปากปิด
+    if(i>=g.length)finishTyping_();
+  },28);
+}
+function stopTyping_(){if(DLG.timer){clearInterval(DLG.timer);DLG.timer=null}}
+function finishTyping_(){
+  stopTyping_();
+  $("dialog-line").textContent=DLG.full;
+  if(DLG.art&&DLG.art.actor)$("dialog-img").src=DLG.art.base;
+  $("dialog-actor").classList.remove("talking");$("dialog-next").classList.remove("wait");
 }
 function advanceDialog(){
+  if(DLG.timer){finishTyping_();return}      // แตะระหว่างข้อความกำลังขึ้น = แสดงข้อความทั้งหมดก่อน
   SFX.click();
   if(dialogQueue.length){showDialogLine_();return}
-  $("dialog").classList.add("hidden");
+  $("dialog").classList.add("hidden");DLG.who=null;
   const d=dialogDone;dialogDone=null;if(d)d();
 }
 // ครูแฟล็กพูดแบบกล่องเล็กในหน้า (ไม่บังจอ)
@@ -226,7 +275,7 @@ async function startBattle(kind,ref,opts){
   $("enemy-stage").style.backgroundImage=`url(${bgURL(wi)})`;
   $("battle-flee").textContent=B.origin==="explore"?"🏃 ถอย":"🏃 หนี";
   $("battle-label").textContent=B.origin==="explore"&&kind==="stage"?`🧭 ${TOPICS[ref]}`:kind==="stage"?`${WORLDS[wi].icon} STAGE ${ref} · ${TOPICS[ref]}`:`${WORLDS[wi].icon} BOSS · ${WORLDS[wi].name}`;
-  $("player-avatar").innerHTML=heroImg(save.avatar,portraitInfo(save.avatar)?72:52);
+  $("player-avatar").innerHTML=heroImg(save.avatar,portraitInfo(save.avatar)?72:52);$("player-avatar").className="player-avatar";
   $("player-name").textContent=`${save.name} Lv.${lvl}`;
   $("enemy-sprite").className="enemy-sprite";
   renderEnemySprite_();
@@ -395,8 +444,18 @@ function floatText_(text,cls){
   d.style.left=(40+Math.random()*20)+"%";
   $("fx-layer").appendChild(d);setTimeout(()=>d.remove(),1000);
 }
+// ท่าทางของผู้เล่นในฉากต่อสู้: attack (พุ่งโจมตี) · hurt (โดนตี) · win (กระโดดดีใจ) — ถ้ามีภาพท่า (poses) จะสลับภาพด้วย
+function playerAct_(act){
+  const el=$("player-avatar"),img=el&&el.querySelector("img");if(!img)return;
+  const alt=poseInfo(heroKey(save.avatar),act);
+  if(!img.dataset.base)img.dataset.base=img.src;
+  clearTimeout(el._t);img.src=alt?alt.url:img.dataset.base;
+  if(alt&&act!=="win")el._t=setTimeout(()=>{img.src=img.dataset.base},650);
+  el.classList.remove("lunge","hurt","win");void el.offsetWidth;el.classList.add({attack:"lunge",hurt:"hurt",win:"win"}[act]);
+}
 async function playerAttack_(dmg,crit,interrupt){
   const e=B.enemy,sp=$("enemy-sprite");
+  playerAct_("attack");await sleep(160);
   e.hp=Math.max(0,e.hp-dmg);
   (crit?SFX.crit:SFX.hit)();
   sp.classList.remove("hit");void sp.offsetWidth;sp.classList.add("hit");
@@ -440,7 +499,7 @@ async function enemyAttack_(){
   dmg=Math.max(1,Math.round(dmg));
   p.hp=Math.max(0,p.hp-dmg);
   SFX.hurt();
-  const pb=document.querySelector(".player-box");pb.classList.remove("hurt");void pb.offsetWidth;pb.classList.add("hurt");
+  const pb=document.querySelector(".player-box");pb.classList.remove("hurt");void pb.offsetWidth;pb.classList.add("hurt");playerAct_("hurt");
   toast(`💢 โดนโจมตี −${dmg} HP`);
   updateBattleHud_();
   if(p.hp<=0){await sleep(500);return endBattle_(false)}
@@ -502,7 +561,7 @@ function gainXp_(amount){
 }
 async function endBattle_(won){
   if(B.over)return;
-  B.over=true;clearInterval(B.timer);
+  B.over=true;clearInterval(B.timer);if(won)playerAct_("win");
   const e=B.enemy,p=B.player,first=!B.prevClears;
   const total=B.correct+B.wrong,acc=total?Math.round(B.correct/total*100):0;
   const hpPct=p.hp/p.maxHp,stars=won?(hpPct>=0.7?3:hpPct>=0.35?2:1):0;

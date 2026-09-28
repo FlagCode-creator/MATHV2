@@ -9,7 +9,8 @@
 |---|---|---|
 | `portraits` ตัวละคร/NPC | ฉากต่อสู้ (ช่องผู้เล่น), กล่องบทสนทนา, หน้าตัวละคร, หน้าเลือกตัวละคร, HUD | ท่าเดียว (หันหน้าตรง) |
 | `sprites` มอนสเตอร์/บอส | ฉากต่อสู้, หน้าต่างดูศัตรู, แผนที่ด่าน, หน้าแรก | ท่าเดียว |
-| ตัวเดินบนแผนที่ | ใช้ตัวเล็กที่วาดด้วยโค้ด (เดินได้ 4 ทิศ) | — |
+| ตัวเดินบนแผนที่ | ใช้ภาพ `portraits`/`sprites` ย่อลง เดินเด้งโยกซ้ายขวา (ไม่มีภาพ → ใช้ตัวที่วาดด้วยโค้ด) | — |
+| บทสนทนา | ตัดเอาช่วง **หัวถึงอก (ครึ่งบน ~55%)** ของภาพ `portraits` มาขยายใหญ่เหนือกล่องข้อความ | — |
 
 ## วิธีเตรียมภาพ (สำคัญ)
 - **พื้นหลังสีขาวเรียบ** หรือโปร่งใส — เกมจะตัดพื้นหลังสีเรียบและขอบว่างออกให้เอง
@@ -107,6 +108,74 @@ clean dark outline, soft cel shading, vibrant colors, plain white background, ce
   "portraits": { "student_m": "portraits/student_m.png", "npc_carpenter": "portraits/npc_carpenter.png" },
   "sprites":   { "A": "monsters/A.png", "boss_w1": "bosses/boss_w1.png" }
 }
+```
+
+## แอนิเมชันที่เกมทำให้อัตโนมัติ (ไม่ต้องมีภาพเพิ่ม)
+- **บทสนทนา:** ข้อความขึ้นทีละตัว · ตัวละครขยับตามจังหวะพูด · หายใจตอนยืนเฉย ·
+  ท่าทางตามอารมณ์ (ดีใจ = กระโดด, ตกใจ = สะดุ้ง, เศร้า = ห่อตัว, โกรธ = สั่น, เขิน = โยก)
+- **ฉากต่อสู้:** ตัวเราหายใจ · พุ่งตอนตอบถูก · สั่นตอนโดนตี · กระโดดดีใจตอนชนะ
+- **แผนที่:** เดินเด้งโยกซ้าย-ขวา · หันซ้ายจะกลับภาพ · ยืนเฉยจะหายใจ
+
+## ภาพเพิ่มเติมสำหรับแอนิเมชัน (ไม่บังคับ — ทยอยเพิ่มทีละตัวได้)
+มีภาพเหล่านี้เมื่อไร เกมจะสลับภาพให้เองทันที:
+| กลุ่มใน manifest | ใช้ตอน | ชื่อท่า |
+|---|---|---|
+| `talk` | ตอนข้อความกำลังขึ้น สลับ ปากปิด ↔ ปากอ้า ให้เหมือนกำลังพูด | ภาพปากอ้า 1 ภาพ |
+| `expressions` | บทพูดที่มีอารมณ์ | `happy` `sad` `surprised` `angry` |
+| `poses` | ฉากต่อสู้ | `attack` (โจมตี) `hurt` (โดนตี) `win` (ชนะ) |
+
+**เคล็ดลับให้ภาพสลับแล้วไม่กระตุก:** ใช้ภาพปกติของตัวละครนั้นเป็นภาพอ้างอิงเสมอ ให้ AI คงท่า มุมกล้อง ขนาด และตำแหน่งตัวเหมือนเดิม
+เปลี่ยนแค่ปาก/สีหน้า · ภาพ `talk`/`expressions` จะทำเต็มตัวหรือครึ่งตัวก็ได้ (ภาพเต็มตัวเกมจะตัดครึ่งบนให้เอง)
+
+### prompt: ภาพปากอ้า (`talk`) — แนบภาพปกติของตัวละครไปด้วย
+```
+same character as the reference image, exactly the same pose, outfit, colors, size and position,
+only change: mouth open as if talking, pixel art, chibi anime, clean dark outline, plain white background, no text
+```
+### prompt: สีหน้า (`expressions`) — ทำ 4 ภาพ เปลี่ยนคำท้ายเป็นแต่ละอารมณ์
+```
+same character as the reference image, same outfit, colors and framing, upper body portrait (head and chest), front view,
+facial expression: very happy big smile with closed eyes   ← happy
+facial expression: sad, teary eyes, frowning             ← sad
+facial expression: surprised, wide eyes, open mouth      ← surprised
+facial expression: angry, furrowed brows, gritted teeth  ← angry
+pixel art, chibi anime, clean dark outline, plain white background, no text
+```
+หรือขอเป็น **แผ่นเดียว 4 ช่อง** (เหมือนแผ่นตัวละครที่เคยทำ) แล้วส่งให้ Claude ตัดแยกให้ก็ได้:
+```
+character expression sheet of the same character as the reference image, 4 upper body portraits in one row,
+from left: happy, sad, surprised, angry, same outfit and colors, even spacing, pixel art, chibi anime,
+clean dark outline, plain white background, no text
+```
+### prompt: ท่าต่อสู้ (`poses`) — ทำ 3 ภาพ
+```
+same character as the reference image, same outfit and colors, full body,
+pose: attacking, lunging forward with weapon swing, dynamic action   ← attack
+pose: getting hit, flinching backward, one eye closed in pain        ← hurt
+pose: victory pose, jumping with fist raised, big smile              ← win
+pixel art, chibi anime, clean dark outline, plain white background, centered, no text, no shadow
+```
+
+### เขียนใน `manifest.json`
+```json
+{
+  "version": 3,
+  "talk":        { "warrior": "talk/warrior.png" },
+  "expressions": { "warrior": { "happy": "expr/warrior_happy.png", "sad": "expr/warrior_sad.png",
+                                "surprised": "expr/warrior_surprised.png", "angry": "expr/warrior_angry.png" } },
+  "poses":       { "warrior": { "attack": "poses/warrior_attack.png", "hurt": "poses/warrior_hurt.png", "win": "poses/warrior_win.png" } }
+}
+```
+- ชื่อ key ใช้ชื่อเดียวกับ `portraits` (เช่น `warrior`, `npc_kid`)
+- **เปลี่ยนภาพแล้วให้เพิ่มเลข `version`** ผู้เล่นจะได้โหลดภาพใหม่ทันที
+- เริ่มจากตัวละครที่ผู้เล่นเห็นบ่อยก่อน: ตัวละครผู้เล่นทั้ง 12 ตัว (`poses`) และ NPC ที่พูดเยอะ (`talk`)
+
+### ครูแฟล็กเดินบนแผนที่
+ตอนนี้ครูแฟล็กบนแผนที่ยังเป็นตัวที่วาดด้วยโค้ด ถ้าอยากให้เข้าชุดกับตัวอื่น ให้สร้างภาพเต็มตัวแล้วใส่เป็น `portraits` ชื่อ `npc_flag`
+(ภาพในกล่องบทสนทนาของครูแฟล็กยังใช้ภาพอารมณ์ชุดเดิมใน `assets/mascot/`)
+```
+same teacher as the reference image, full body, front view, standing pose, khaki Thai civil servant uniform,
+pixel art, chibi anime character, clean dark outline, plain white background, centered, no text, no shadow
 ```
 
 ## ตัวเลือกขั้นสูง (ไม่บังคับ)

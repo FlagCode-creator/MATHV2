@@ -233,12 +233,18 @@ function drawExplore_(now){
     const bx=l.x*TS+1-camX,by=l.y*TS-9-camY;
     c.fillStyle="#4a2c18";c.fillRect(bx,by,14,10);c.fillStyle="#b87a48";c.fillRect(bx+1,by+1,12,8);c.fillStyle="#d49a60";c.fillRect(bx+1,by+1,12,1);
     c.font="7px sans-serif";c.textAlign="center";c.textBaseline="middle";c.fillText(l.icon,bx+7,by+5.5)}}));
-  X.npcs.forEach(n=>ents.push({y:n.fy,draw:()=>drawChar_(c,n.sprite,n.dir||"down",n.t<1?(n.step%2?1:2):0,n.fx,n.fy,camX,camY)}));
-  X.mons.forEach(m=>ents.push({y:m.fy,draw:()=>drawSprite_(c,MONSTERS[m.stage].sprite,m.fx,m.fy,camX,camY,Math.floor(now/350+m.x)%2,m.flip)}));
+  X.npcs.forEach(n=>ents.push({y:n.fy,draw:()=>drawChar_(c,n.sprite,n.dir||"down",n.t<1?(n.step%2?1:2):0,n.fx,n.fy,camX,camY,n,now)}));
+  X.mons.forEach(m=>ents.push({y:m.fy,draw:()=>{
+    const art=customSpriteInfo(MONSTERS[m.stage].sprite);
+    if(art)drawArt_(c,art,Math.min(MON_ART_H,MON_ART_W*art.h/art.w),m.fx*TS+8-camX,m.fy*TS+TS-camY,m,!!m.flip,now);
+    else drawSprite_(c,MONSTERS[m.stage].sprite,m.fx,m.fy,camX,camY,Math.floor(now/350+m.x)%2,m.flip)}}));
   const b=X.m.boss;
-  if(b&&!save.explore.bossDone)ents.push({y:b.y,draw:()=>{const cv2=spriteCanvas(b.sprite);c.drawImage(cv2,Math.round(b.x*TS+8-cv2.width/2-camX),Math.round(b.y*TS+TS-cv2.height-camY+(Math.floor(now/400)%2)))}});
+  if(b&&!save.explore.bossDone)ents.push({y:b.y,draw:()=>{
+    const art=customSpriteInfo(b.sprite);
+    if(art){drawArt_(c,art,Math.min(BOSS_ART_H,BOSS_ART_W*art.h/art.w),b.x*TS+8-camX,b.y*TS+TS-camY,{x:b.x,y:b.y,t:1},false,now);return}
+    const cv2=spriteCanvas(b.sprite);c.drawImage(cv2,Math.round(b.x*TS+8-cv2.width/2-camX),Math.round(b.y*TS+TS-cv2.height-camY+(Math.floor(now/400)%2)))}});
   const moving=p.t<1;
-  ents.push({y:p.fy,draw:()=>drawChar_(c,"hero:"+heroKey(save.avatar),p.dir,moving?(p.step%2?1:2):0,p.fx,p.fy,camX,camY)});
+  ents.push({y:p.fy,draw:()=>drawChar_(c,"hero:"+heroKey(save.avatar),p.dir,moving?(p.step%2?1:2):0,p.fx,p.fy,camX,camY,p,now)});
   ents.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());
   // ป้าย "!" เหนือครูแฟล็กเมื่อมีเรื่องสำคัญ
   const f=X.npcs.find(n=>n.id==="flag");
@@ -247,8 +253,11 @@ function drawExplore_(now){
     c.fillStyle="#181425";c.fillRect(bx-1,by-1,8,11);c.fillStyle="#fee761";c.fillRect(bx,by,6,9);c.fillStyle="#181425";c.fillRect(bx+2,by+1,2,4);c.fillRect(bx+2,by+6,2,2);
   }
 }
-// ตัวละคร 16×24: เท้าอยู่ที่ขอบล่างของช่อง
-function drawChar_(c,spriteKey,dir,frame,fx,fy,camX,camY){
+// ตัวละครที่มีภาพใหญ่ (portraits) → ใช้ภาพนั้นแบบย่อ เดินเด้งโยกซ้ายขวา · ไม่มีภาพ → ตัวเดินที่วาดด้วยโค้ด (16×32)
+const CHAR_ART_H=32,MON_ART_H=24,BOSS_ART_H=42,MON_ART_W=26,BOSS_ART_W=46;
+function drawChar_(c,spriteKey,dir,frame,fx,fy,camX,camY,ent,now){
+  const art=portraitInfo(spriteKey);
+  if(art){drawArt_(c,art,CHAR_ART_H,fx*TS+8-camX,fy*TS+TS-camY,ent,dir==="left",now||performance.now());return}
   const key=charKeyFor(spriteKey);
   if(!key){drawSprite_(c,spriteKey,fx,fy,camX,camY,0,false);return}
   const cv=charFrame(key,dir,frame);
@@ -256,6 +265,28 @@ function drawChar_(c,spriteKey,dir,frame,fx,fy,camX,camY){
   const dx=Math.round(fx*TS-1-camX),dy=Math.round(fy*TS+TS+1-h-camY);
   c.fillStyle="rgba(0,0,0,.28)";c.fillRect(dx+4,Math.round(fy*TS-camY)+14,10,3);c.fillRect(dx+3,Math.round(fy*TS-camY)+15,12,1);
   c.drawImage(cv,dx,dy,w,h);
+}
+// ย่อภาพใหญ่ให้พอดีความละเอียดจอจริง (ย่อทีละครึ่งเพื่อให้คม) — เก็บแคชไว้ตามขนาด
+function miniArt_(info,h,P){
+  const H=Math.max(1,Math.round(h*P)),k=H;info.mini=info.mini||{};if(info.mini[k])return info.mini[k];
+  let src=info.canvas,sw=info.w,sh=info.h;
+  while(sh/2>=H){const t=document.createElement("canvas");t.width=Math.max(1,Math.round(sw/2));t.height=Math.max(1,Math.round(sh/2));
+    const tc=t.getContext("2d");tc.imageSmoothingEnabled=true;tc.imageSmoothingQuality="high";tc.drawImage(src,0,0,t.width,t.height);src=t;sw=t.width;sh=t.height}
+  const out=document.createElement("canvas");out.height=H;out.width=Math.max(1,Math.round(H*info.w/info.h));
+  const oc=out.getContext("2d");oc.imageSmoothingEnabled=H<sh;oc.imageSmoothingQuality="high";oc.drawImage(src,0,0,out.width,out.height);
+  return info.mini[k]=out;
+}
+// วาดภาพย่อ: เท้าอยู่ที่ (cx, footY) · เดิน = โยกซ้าย-ขวา + เด้งขึ้นทุกก้าว · ยืน = หายใจ
+function drawArt_(c,info,h,cx,footY,ent,flip,now){
+  const P=X.px||2,mini=miniArt_(info,h,P),w=mini.width/P,hh=mini.height/P;
+  const t=ent&&ent.t!=null?ent.t:1,moving=t<1,ph=moving?Math.sin(t*Math.PI):0;
+  const side=((ent&&ent.step!=null?ent.step:ent?ent.x+ent.y:0)%2)?1:-1;
+  const rot=moving?ph*0.11*side:0,bob=moving?ph*2:0;
+  const breathe=moving?1:1+0.022*Math.sin(now/380+(ent?ent.x*1.7+ent.y:0));
+  const sx=Math.round(cx*P)/P,sy=Math.round(footY*P)/P;
+  c.fillStyle="rgba(0,0,0,.26)";c.beginPath();c.ellipse(sx,sy-1,Math.max(4,w*0.36)*(1-bob*0.06),2.2,0,0,Math.PI*2);c.fill();
+  c.save();c.translate(sx,sy-bob);c.rotate(rot);c.scale(flip?-1:1,breathe);
+  c.imageSmoothingEnabled=true;c.drawImage(mini,-w/2,-hh,w,hh);c.restore();
 }
 function drawSprite_(c,key,fx,fy,camX,camY,bob,flip){
   const cv=spriteCanvas(key);if(!cv)return;
@@ -377,7 +408,7 @@ function closeExMenu(){$("ex-menu").classList.add("hidden");if(X)X.busy=false}
 /* บทสนทนา / ปริศนา                                                         */
 /* ====================================================================== */
 async function exSay_(lines){if(X){X.busy=true;X.held=null}await playDialog(lines);if(X)X.busy=false}
-const say=(npc,text)=>({sprite:npc.sprite,name:npc.name,text});
+const say=(npc,text,pose)=>({sprite:npc.sprite,name:npc.name,text,pose});
 
 // กล่องใส่คำตอบตัวเลข (ปุ่มกดบนจอ) — คืนค่า true เมื่อตอบถูก
 function askNumber({title,text,answer,hint,portrait}){
@@ -456,7 +487,7 @@ async function talkNpc_(npc){
     const pts=skillPointsFree();
     return exSay_([{mood:"thinking",text:`ภารกิจตอนนี้: ${objective_()}`},...(pts?[{mood:"excited",text:`เธอมีแต้มทักษะเหลือ ${pts} แต้ม! กดปุ่ม ☰ แล้วเลือก "ต้นไม้ทักษะ" เพื่ออัปเกรดนะ`}]:[])]);
   }
-  if(npc.id==="shop"){await exSay_([say(npc,"ยินดีต้อนรับจ้า! มีของดีช่วยให้รอดเยอะเลย")]);stopExplore_();return openShop("explore")}
+  if(npc.id==="shop"){await exSay_([say(npc,"ยินดีต้อนรับจ้า! มีของดีช่วยให้รอดเยอะเลย","happy")]);stopExplore_();return openShop("explore")}
   if(npc.id==="inn"){
     await exSay_([say(npc,"พักผ่อนสักหน่อยไหมจ๊ะ? ที่นี่ฟรีสำหรับนักผจญภัยตัวน้อย 🛏️")]);
     e.hp=effMaxHp();persist();SFX.heal();toast("💤 พักผ่อนแล้ว HP เต็ม!");updateExHud_();return;
@@ -465,7 +496,7 @@ async function talkNpc_(npc){
     "รู้ไหม ถ้าตอบเร็ว ๆ ตอนแถบเวลายังเป็นสีทอง จะตีคริติคอลแรงขึ้นครึ่งหนึ่งเลยนะ!",
     "ตอบถูกติดกันหลาย ๆ ข้อ คอมโบจะทำให้ตีแรงขึ้นเรื่อย ๆ",
     "ถ้า HP เหลือน้อย กลับมาพักที่โรงแรมได้ฟรีนะ",
-    "เลเวลอัปแล้วได้แต้มทักษะ ลองกดปุ่ม ☰ ดูสิ"]))]);
+    "เลเวลอัปแล้วได้แต้มทักษะ ลองกดปุ่ม ☰ ดูสิ"]),"happy")]);
   if(npc.id==="carpenter")return tryGate_("bridge");
   if(npc.id==="farmer")return exSay_([say(npc,e.chests.cC
     ?"ขอบใจที่ช่วยเปิดหีบนะ กุญแจในนั้นใช้เปิดประตูทางตะวันออกได้"
@@ -533,7 +564,7 @@ function startFieldBattle_(mon){
 async function startBossBattle_(){
   if(!X||X.busy)return;
   X.held=null;
-  await exSay_([{sprite:"boss_w1",name:"ราชาสไลม์ตัวเลข",text:"บึ๋ง บึ๋ง! ข้าคือราชาแห่งทุ่งหญ้าจำนวน! ใครกล้ามาท้าทายข้า?!"}]);
+  await exSay_([{sprite:"boss_w1",name:"ราชาสไลม์ตัวเลข",pose:"angry",text:"บึ๋ง บึ๋ง! ข้าคือราชาแห่งทุ่งหญ้าจำนวน! ใครกล้ามาท้าทายข้า?!"}]);
   X.busy=true;stopExplore_();
   X.pending={boss:true};
   startBattle("boss",0,{origin:"explore",hp:save.explore.hp});

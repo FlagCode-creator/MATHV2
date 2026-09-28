@@ -7,9 +7,12 @@
    - sprites    : ภาพใหญ่ของมอนสเตอร์/บอส/วัตถุ → ฉากต่อสู้และหน้าจอต่าง ๆ (บนแผนที่ยังใช้ตัวเล็กที่วาดด้วยโค้ด)
    - mapSprites : ภาพเล็กสำหรับบนแผนที่ (ไม่บังคับ)
    - characters : sprite sheet เดิน 4 ทิศ แบบ RPG Maker (ไม่บังคับ)
+   - talk       : ภาพปากอ้าของตัวละคร → สลับกับภาพปกติตอนพูด (ไม่บังคับ)
+   - expressions: ภาพสีหน้า {happy, sad, surprised, angry} ของตัวละคร (ไม่บังคับ)
+   - poses      : ภาพท่าต่อสู้ {attack, hurt, win} ของตัวละคร (ไม่บังคับ)
    ภาพที่มีพื้นหลังสีเรียบจะถูกตัดพื้นหลังและขอบว่างออกให้อัตโนมัติ */
 
-const CUSTOM={portraits:{},sprites:{},mapSprites:{},chars:{},loaded:false};
+const CUSTOM={portraits:{},sprites:{},mapSprites:{},chars:{},talk:{},expressions:{},poses:{},loaded:false};
 function loadImage_(src){return new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>res(null);i.src=src})}
 
 // ตัดพื้นหลังสีเรียบ (ไล่จากขอบภาพ) + ตัดขอบโปร่งใสรอบตัวละคร
@@ -44,15 +47,21 @@ async function loadCustomAssets(){
   try{
     const r=await fetch("assets/custom/manifest.json",{cache:"no-cache"});
     if(!r.ok)return;
-    const m=await r.json(),base="assets/custom/";
+    const m=await r.json(),base="assets/custom/",ver=m.version?"?v="+m.version:"";   // version: เพิ่มเลขเมื่อเปลี่ยนภาพ (กันแคชภาพเก่า)
     const loadGroup=async(group,target)=>Promise.all(Object.entries(m[group]||{}).map(async([key,src])=>{
-      const img=await loadImage_(base+src);if(img)target[key]=cleanImage_(img);
+      const img=await loadImage_(base+src+ver);if(img)target[key]=cleanImage_(img);
     }));
     await loadGroup("portraits",CUSTOM.portraits);
     await loadGroup("sprites",CUSTOM.sprites);
     await loadGroup("mapSprites",CUSTOM.mapSprites);
+    await loadGroup("talk",CUSTOM.talk);
+    // expressions / poses: { key: { ชื่อท่า: ไฟล์ } }
+    for(const g of ["expressions","poses"])await Promise.all(Object.entries(m[g]||{}).map(async([key,set])=>{
+      CUSTOM[g][key]={};
+      await Promise.all(Object.entries(set||{}).map(async([name,src])=>{const img=await loadImage_(base+src+ver);if(img)CUSTOM[g][key][name]=cleanImage_(img)}));
+    }));
     await Promise.all(Object.entries(m.characters||{}).map(async([key,def])=>{
-      const d=typeof def==="string"?{src:def}:def,img=await loadImage_(base+d.src);
+      const d=typeof def==="string"?{src:def}:def,img=await loadImage_(base+d.src+ver);
       if(img)CUSTOM.chars[key]={img,cols:d.cols||3,rows:d.rows||4,order:d.order||["down","left","right","up"]};
     }));
     CUSTOM.loaded=true;
@@ -68,6 +77,21 @@ function customSpriteURL(key){const c=CUSTOM.sprites[key];return c?c.url:null}
 function customSpriteInfo(key){return CUSTOM.sprites[key]||null}
 // ภาพใหญ่ของตัวละคร: key = ชื่ออาชีพ (student_m) หรือ NPC (npc_flag)
 function portraitInfo(key){if(!key)return null;if(key.indexOf("hero:")===0)key=key.slice(5);return CUSTOM.portraits[key]||null}
+const stripKey_=k=>k&&k.indexOf("hero:")===0?k.slice(5):k;
+// ภาพครึ่งตัว (หัวถึงอก) สำหรับกล่องบทสนทนา — ภาพเต็มตัว (สูงกว่ากว้าง) ตัดเอาส่วนบน ~55% · ภาพที่เป็นครึ่งตัวอยู่แล้วใช้ทั้งภาพ
+const BUST_PART=0.55;
+function bustOf_(info){
+  if(!info)return null;if(info.bust)return info.bust;
+  if(info.h<info.w*1.15){info.bust=info;return info}
+  const h=Math.round(info.h*BUST_PART),cv=document.createElement("canvas");cv.width=info.w;cv.height=h;
+  cv.getContext("2d").drawImage(info.canvas,0,0,info.w,h,0,0,info.w,h);
+  info.bust={canvas:cv,url:cv.toDataURL(),w:info.w,h};return info.bust;
+}
+function bustInfo(key){return bustOf_(portraitInfo(key))}
+// ภาพเพิ่มเติม (ถ้าครูใส่ไว้): ปากอ้า / สีหน้า / ท่าต่อสู้
+function talkBust(key){return bustOf_(CUSTOM.talk[stripKey_(key)])}
+function expressionBust(key,mood){const s=CUSTOM.expressions[stripKey_(key)];return s&&s[mood]?bustOf_(s[mood]):null}
+function poseInfo(key,pose){const s=CUSTOM.poses[stripKey_(key)];return s&&s[pose]||null}
 // ภาพ <img> ที่พอดีกรอบ size×size โดยคงสัดส่วน · ภาพใหญ่ที่ถูกย่อใช้การย่อแบบนุ่ม ภาพเล็กที่ถูกขยายใช้แบบพิกเซลคม
 function fitImg_(info,size,cls){
   const s=Math.min(size/info.w,size/info.h),w=Math.round(info.w*s),h=Math.round(info.h*s);

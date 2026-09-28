@@ -237,8 +237,31 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .preview-stats{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:10px}
 .modal-actions{margin-top:8px}
 .dialog{position:fixed;inset:0;z-index:60;background:rgba(3,6,20,.55);display:flex;align-items:flex-end;justify-content:center;padding:16px;cursor:pointer}
-.dialog-box{width:100%;max-width:540px;display:flex;align-items:flex-end;gap:10px;background:#fff;color:#1e1b4b;border:4px solid #1e1b4b;border-radius:16px;padding:12px;box-shadow:0 6px 0 rgba(0,0,0,.5);animation:enter .25s both}
-.dialog-img{width:96px;height:96px;flex-shrink:0;margin-top:-50px;background:#e0e7ff;border:3px solid #1e1b4b;border-radius:14px}
+.dialog-wrap{width:100%;max-width:600px;display:flex;flex-direction:column;align-items:flex-start}
+.dialog-box{position:relative;z-index:1;width:100%;display:flex;align-items:flex-start;gap:10px;background:#fff;color:#1e1b4b;border:4px solid #1e1b4b;border-radius:16px;padding:12px 14px;box-shadow:0 6px 0 rgba(0,0,0,.5);animation:enter .25s both}
+/* ภาพครึ่งตัวยืนเหนือกล่อง (ช่วงอกจมอยู่หลังกล่อง) */
+.dialog-actor{position:relative;z-index:0;height:min(36vh,240px);margin:0 0 -18px 10px;display:flex;align-items:flex-end;pointer-events:none;filter:drop-shadow(0 4px 0 rgba(0,0,0,.35))}
+.dialog.no-actor .dialog-actor{display:none}
+.dialog-actor.monster{height:min(30vh,200px);margin-bottom:-6px}
+.dialog-actor.enter{animation:actorIn .32s ease-out}
+.dialog-pose{height:100%;display:flex;align-items:flex-end;transform-origin:50% 100%}
+.dialog-img{height:100%;width:auto;max-width:70vw;object-fit:contain;transform-origin:50% 100%;animation:breathe 2.6s ease-in-out infinite}
+.dialog-actor.talking .dialog-img{animation:talk .2s ease-in-out infinite alternate}
+.dialog-icon{width:64px;height:64px;flex-shrink:0;object-fit:contain;background:#e0e7ff;border:3px solid #1e1b4b;border-radius:12px}
+.dialog-next.wait{visibility:hidden}
+@keyframes actorIn{from{opacity:0;transform:translateX(-36px)}to{opacity:1;transform:none}}
+@keyframes breathe{50%{transform:scale(.994,1.018)}}
+@keyframes talk{from{transform:none}to{transform:translateY(-2px) scale(.988,1.03)}}
+.pose-hop{animation:poseHop .7s ease-out}
+.pose-shock{animation:poseShock .6s ease-out}
+.pose-droop{animation:poseDroop .6s ease-out forwards}
+.pose-rage{animation:poseRage .5s ease-in-out}
+.pose-sway{animation:poseSway 1.2s ease-in-out}
+@keyframes poseHop{25%{transform:translateY(-20px) scaleY(1.04)}45%{transform:scale(1.04,.95)}65%{transform:translateY(-9px)}85%{transform:scale(1.02,.98)}}
+@keyframes poseShock{12%{transform:translateY(-16px) scale(1.07)}30%{transform:translateX(-7px)}45%{transform:translateX(7px)}60%{transform:translateX(-4px)}75%{transform:translateX(3px)}}
+@keyframes poseDroop{to{transform:translateY(8px) rotate(-3deg) scaleY(.96)}}
+@keyframes poseRage{0%,100%{transform:none}15%,55%{transform:translateX(-5px) rotate(-2deg) scale(1.03)}35%,75%{transform:translateX(5px) rotate(2deg) scale(1.03)}}
+@keyframes poseSway{25%{transform:rotate(-4deg)}75%{transform:rotate(4deg)}}
 .dialog-text{flex:1;min-width:0}
 .dialog-name{font-family:var(--pixel);font-size:.6rem;color:#4338ca}
 .dialog-text p{margin:6px 0 4px;font-size:1rem;line-height:1.55;font-weight:500}
@@ -369,10 +392,21 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
   .pz-keys{grid-area:keys;margin-top:0;gap:5px}.pz-keys button{padding:7px 0;font-size:1.05rem}
   .pz-actions{grid-area:actions;margin-top:4px}
   .pz-portrait img{width:56px;height:56px}
-  .dialog-img{width:72px;height:72px;margin-top:-30px}
+  .dialog{padding:8px 16px}
+  .dialog-actor{height:min(46vh,190px)}
+  .dialog-actor.monster{height:min(40vh,160px)}
+  .dialog-text p{font-size:.95rem;margin:4px 0 2px}
 }
 @media (orientation:landscape) and (max-height:520px){.toast{top:10px;bottom:auto;transform:translate(-50%,-20px)}.toast.show{transform:translate(-50%,0)}}
 
 /* ภาพ PNG ของครู: ภาพใหญ่ที่ถูกย่อให้ย่อแบบนุ่ม */
 img.smooth,.smooth{image-rendering:auto}
-.dialog-img{object-fit:contain}
+
+/* ท่าทางผู้เล่นในฉากต่อสู้ */
+.player-avatar img{object-fit:contain;transform-origin:50% 100%;animation:breathe 2.4s ease-in-out infinite}
+.player-avatar.lunge img{animation:lunge .45s ease-out}
+.player-avatar.hurt img{animation:hurtShake .45s}
+.player-avatar.win img{animation:winHop .55s ease-out 3}
+@keyframes lunge{35%{transform:translate(12px,-16px) rotate(8deg) scale(1.15)}70%{transform:translate(4px,-4px) scale(1.04)}}
+@keyframes hurtShake{0%,100%{transform:none;filter:none}15%{transform:translateX(-6px) rotate(-6deg);filter:brightness(1.6) sepia(1) hue-rotate(-50deg) saturate(4)}40%{transform:translateX(6px) rotate(4deg)}65%{transform:translateX(-3px)}}
+@keyframes winHop{40%{transform:translateY(-14px) scaleY(1.05)}70%{transform:scale(1.05,.95)}}
