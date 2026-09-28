@@ -1,5 +1,5 @@
 {
- "version": 2,
+ "version": 3,
  "portraits": {
   "student_m": "portraits/student_m.png",
   "student_f": "portraits/student_f.png",
@@ -54,5 +54,57 @@
   "boss_w6": "bosses/boss_w6.png",
   "boss_w7": "bosses/boss_w7.png",
   "boss_w8": "bosses/boss_w8.png"
+ },
+ "expressions": {
+  "mage_b": {
+   "neutral": "expr/mage_b_talk.png",
+   "happy": "expr/mage_b_happy.png",
+   "sad": "expr/mage_b_sad.png",
+   "surprised": "expr/mage_b_surprised.png",
+   "angry": "expr/mage_b_angry.png"
+  },
+  "mage": {
+   "neutral": "expr/mage_talk.png",
+   "happy": "expr/mage_happy.png",
+   "sad": "expr/mage_sad.png",
+   "surprised": "expr/mage_surprised.png",
+   "angry": "expr/mage_angry.png"
+  },
+  "warrior_r": {
+   "neutral": "expr/warrior_r_talk.png",
+   "happy": "expr/warrior_r_happy.png",
+   "sad": "expr/warrior_r_sad.png",
+   "surprised": "expr/warrior_r_surprised.png",
+   "angry": "expr/warrior_r_angry.png"
+  },
+  "warrior": {
+   "neutral": "expr/warrior_talk.png",
+   "happy": "expr/warrior_happy.png",
+   "sad": "expr/warrior_sad.png",
+   "surprised": "expr/warrior_surprised.png",
+   "angry": "expr/warrior_angry.png"
+  }
+ },
+ "poses": {
+  "mage_b": {
+   "attack": "poses/mage_b_attack.png",
+   "hurt": "poses/mage_b_hurt.png",
+   "win": "poses/mage_b_win.png"
+  },
+  "mage": {
+   "attack": "poses/mage_attack.png",
+   "hurt": "poses/mage_hurt.png",
+   "win": "poses/mage_win.png"
+  },
+  "warrior_r": {
+   "attack": "poses/warrior_r_attack.png",
+   "hurt": "poses/warrior_r_hurt.png",
+   "win": "poses/warrior_r_win.png"
+  },
+  "warrior": {
+   "attack": "poses/warrior_attack.png",
+   "hurt": "poses/warrior_hurt.png",
+   "win": "poses/warrior_win.png"
+  }
  }
 }

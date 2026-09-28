@@ -94,17 +94,18 @@ function portraitInfo(key){if(!key)return null;if(key.indexOf("hero:")===0)key=k
 const stripKey_=k=>k&&k.indexOf("hero:")===0?k.slice(5):k;
 // ภาพครึ่งตัว (หัวถึงอก) สำหรับกล่องบทสนทนา — ภาพเต็มตัว (สูงกว่ากว้าง) ตัดเอาส่วนบน ~55% · ภาพที่เป็นครึ่งตัวอยู่แล้วใช้ทั้งภาพ
 const BUST_PART=0.55;
-function bustOf_(info){
+function bustOf_(info,tall){
   if(!info)return null;if(info.bust)return info.bust;
-  if(info.h<info.w*1.15){info.bust=info;return info}
+  if(info.h<info.w*(tall||1.15)){info.bust=info;return info}
   const h=Math.round(info.h*BUST_PART),cv=document.createElement("canvas");cv.width=info.w;cv.height=h;
   cv.getContext("2d").drawImage(info.canvas,0,0,info.w,h,0,0,info.w,h);
   info.bust={canvas:cv,url:cv.toDataURL(),w:info.w,h};return info.bust;
 }
 function bustInfo(key){return bustOf_(portraitInfo(key))}
 // ภาพเพิ่มเติม (ถ้าครูใส่ไว้): ปากอ้า / สีหน้า / ท่าต่อสู้
-function talkBust(key){return bustOf_(CUSTOM.talk[stripKey_(key)])}
-function expressionBust(key,mood){const s=CUSTOM.expressions[stripKey_(key)];return s&&s[mood]?bustOf_(s[mood]):null}
+// ภาพสีหน้า/ปากอ้ามักเป็นครึ่งตัวอยู่แล้ว (สูงกว่ากว้างเล็กน้อย) — ตัดเฉพาะภาพที่ยาวแบบเต็มตัวจริง ๆ
+function talkBust(key){return bustOf_(CUSTOM.talk[stripKey_(key)],1.45)}
+function expressionBust(key,mood){const s=CUSTOM.expressions[stripKey_(key)];return s&&s[mood]?bustOf_(s[mood],1.45):null}
 function poseInfo(key,pose){const s=CUSTOM.poses[stripKey_(key)];return s&&s[pose]||null}
 // ครูแฟล็กชุดใหม่: expressions.npc_flag มี 7 หน้า → จับคู่กับอารมณ์เดิม 18 แบบ (ไฟล์ใน assets/mascot)
 const FLAG_MOOD={neutral:"neutral",hello:"neutral",wave:"neutral",

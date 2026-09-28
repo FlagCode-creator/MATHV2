@@ -411,3 +411,4 @@ img.smooth,.smooth{image-rendering:auto}
 @keyframes hurtShake{0%,100%{transform:none;filter:none}15%{transform:translateX(-6px) rotate(-6deg);filter:brightness(1.6) sepia(1) hue-rotate(-50deg) saturate(4)}40%{transform:translateX(6px) rotate(4deg)}65%{transform:translateX(-3px)}}
 @keyframes winHop{40%{transform:translateY(-14px) scaleY(1.05)}70%{transform:scale(1.05,.95)}}
 .enemy-sprite img.sprite{object-fit:contain}
+.player-avatar{position:relative;z-index:2}

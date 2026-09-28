@@ -44,8 +44,9 @@ function dialogArt_(l,pose){
   if(!l.sprite)return {actor:true,base:mascotSrc(l.mood||"neutral")};
   const bust=bustInfo(l.sprite);
   if(bust){
-    const ex=pose&&expressionBust(l.sprite,pose),t=!ex&&talkBust(l.sprite);
-    return {actor:true,base:(ex||bust).url,talk:t?t.url:null};
+    // ชุดสีหน้า (expressions): neutral = หน้าปกติ (กรอบเดียวกับหน้าอื่น ภาพไม่กระโดด) · talk = ปากอ้าสลับกับหน้าปกติ
+    const ex=pose&&expressionBust(l.sprite,pose),neutral=expressionBust(l.sprite,"neutral"),t=!ex&&talkBust(l.sprite);
+    return {actor:true,base:(ex||neutral||bust).url,talk:t?t.url:null};
   }
   const big=customSpriteInfo(l.sprite);
   if(big)return {actor:true,base:big.url,monster:true};
@@ -456,9 +457,12 @@ function floatText_(text,cls){
 function playerAct_(act){
   const el=$("player-avatar"),img=el&&el.querySelector("img");if(!img)return;
   const alt=poseInfo(heroKey(save.avatar),act);
-  if(!img.dataset.base)img.dataset.base=img.src;
-  clearTimeout(el._t);img.src=alt?alt.url:img.dataset.base;
-  if(alt&&act!=="win")el._t=setTimeout(()=>{img.src=img.dataset.base},650);
+  if(!img.dataset.base){img.dataset.base=img.src;img.dataset.w=img.width;img.dataset.h=img.height}
+  // ภาพท่าสูงเท่าภาพปกติ กว้างตามสัดส่วน (ส่วนที่เกินล้นออกขวา ไม่ดันแถบ HP)
+  const show=info=>{if(info){const w=Math.round(img.dataset.h*info.w/info.h);img.src=info.url;img.style.width=w+"px";img.style.marginRight=(img.dataset.w-w)+"px"}
+    else{img.src=img.dataset.base;img.style.width="";img.style.marginRight=""}};
+  clearTimeout(el._t);show(alt);
+  if(alt&&act!=="win")el._t=setTimeout(()=>show(null),650);
   el.classList.remove("lunge","hurt","win");void el.offsetWidth;el.classList.add({attack:"lunge",hurt:"hurt",win:"win"}[act]);
 }
 async function playerAttack_(dmg,crit,interrupt){
