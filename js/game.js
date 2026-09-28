@@ -94,7 +94,7 @@ function typeLine_(text,art){
 function stopTyping_(){if(DLG.timer){clearInterval(DLG.timer);DLG.timer=null}}
 function finishTyping_(){
   stopTyping_();
-  $("dialog-line").textContent=DLG.full;
+  $("dialog-line").textContent=DLG.full;if(typeof iconize_==="function")iconize_($("dialog-line"),true);
   if(DLG.art&&DLG.art.actor)$("dialog-img").src=DLG.art.base;
   $("dialog-actor").classList.remove("talking");$("dialog-next").classList.remove("wait");
 }

@@ -497,3 +497,12 @@ body.flash::after{content:"";position:fixed;inset:0;background:#fff;opacity:.55;
 .panel{border-radius:6px;box-shadow:0 5px 0 #070a1c,inset 0 0 0 2px rgba(255,255,255,.05),inset 0 3px 0 rgba(255,255,255,.07)}
 .modal-card.panel,.modal .panel{box-shadow:0 0 0 3px #070a1c,0 0 0 5px #6d78e8,0 8px 0 5px rgba(0,0,0,.45),inset 0 3px 0 rgba(255,255,255,.07)}
 .toast{border-radius:4px;box-shadow:0 0 0 2px #070a1c,0 0 0 4px #fbbf24,0 6px 0 3px rgba(0,0,0,.4)}
+
+/* ===== ไอคอนพิกเซล (js/icons.js) ===== */
+img.ico{width:1.3em;height:1.3em;vertical-align:-.3em;image-rendering:pixelated;display:inline-block;margin:0 .05em}
+.item-btn img.ico{width:30px;height:30px;display:block;margin:0 auto 2px;vertical-align:0}
+.shop-item .ic img.ico{width:44px;height:44px;vertical-align:0}
+.sk-ic img.ico{width:28px;height:28px;vertical-align:0}
+.skill-branch h3 img.ico{width:18px;height:18px;vertical-align:-3px}
+.reward img.ico{width:1.4em;height:1.4em}
+.credits{text-align:center;font-size:.72rem;color:#7c86c9;margin:18px 0 8px}.credits a{color:#a5b4fc}
