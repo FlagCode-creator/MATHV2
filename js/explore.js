@@ -135,6 +135,7 @@ function exLoop_(now){
   updatePlayer_(now,dt);
   updateMonsters_(now);
   updateNpcs_(now);
+  updateEmotes_(now);
   drawExplore_(now);
   requestAnimationFrame(exLoop_);
 }
@@ -175,7 +176,7 @@ function checkZone_(){
 function warpTo_(w){
   const wrap=$("ex-wrap");wrap.classList.add("fade");
   X.busy=true;
-  setTimeout(()=>{loadMap_(w.to,w.tx,w.ty,save.explore.dir);X.running=true;resizeExplore_();updateExHud_();wrap.classList.remove("fade");X.invulnUntil=performance.now()+1000;checkZone_()},220);
+  setTimeout(()=>{loadMap_(w.to,w.tx,w.ty,save.explore.dir);playBgm(screenTrack_("explore"));X.running=true;resizeExplore_();updateExHud_();wrap.classList.remove("fade");X.invulnUntil=performance.now()+1000;checkZone_()},220);
 }
 function showArea_(text){const el=$("ex-area");el.textContent=text;el.classList.remove("show");void el.offsetWidth;el.classList.add("show")}
 $("ex-area").addEventListener("animationend",ev=>ev.currentTarget.classList.remove("show"));
@@ -236,20 +237,22 @@ function drawExplore_(now){
     const bx=l.x*TS+1-camX,by=l.y*TS-9-camY;
     c.fillStyle="#4a2c18";c.fillRect(bx,by,14,10);c.fillStyle="#b87a48";c.fillRect(bx+1,by+1,12,8);c.fillStyle="#d49a60";c.fillRect(bx+1,by+1,12,1);
     c.font="7px sans-serif";c.textAlign="center";c.textBaseline="middle";c.fillText(l.icon,bx+7,by+5.5)}}));
-  X.npcs.forEach(n=>ents.push({y:n.fy,draw:()=>drawChar_(c,n.sprite,n.dir||"down",n.t<1?(n.step%2?1:2):0,n.fx,n.fy,camX,camY,n,now)}));
+  X.npcs.forEach(n=>ents.push({y:n.fy,draw:()=>{drawChar_(c,n.sprite,n.dir||"down",n.t<1?(n.step%2?1:2):0,n.fx,n.fy,camX,camY,n,now);grassOver_(c,n.fx,n.fy,camX,camY,now)}}));
   X.mons.forEach(m=>ents.push({y:m.fy,draw:()=>{
     const art=customSpriteInfo(MONSTERS[m.stage].sprite);
     if(art)drawArt_(c,art,Math.min(MON_ART_H,MON_ART_W*art.h/art.w),m.fx*TS+8-camX,m.fy*TS+TS-camY,m,!!m.flip,now,monStyle_(MONSTERS[m.stage].sprite));
-    else drawSprite_(c,MONSTERS[m.stage].sprite,m.fx,m.fy,camX,camY,Math.floor(now/350+m.x)%2,m.flip)}}));
+    else drawSprite_(c,MONSTERS[m.stage].sprite,m.fx,m.fy,camX,camY,Math.floor(now/350+m.x)%2,m.flip);grassOver_(c,m.fx,m.fy,camX,camY,now)}}));
   const b=X.m.boss;
   if(b&&!save.explore.bossDone)ents.push({y:b.y,draw:()=>{
     const art=customSpriteInfo(b.sprite);
     if(art){drawArt_(c,art,Math.min(BOSS_ART_H,BOSS_ART_W*art.h/art.w),b.x*TS+8-camX,b.y*TS+TS-camY,X.bossEnt||(X.bossEnt={x:b.x,y:b.y,t:1}),false,now,monStyle_(b.sprite));return}
     const cv2=spriteCanvas(b.sprite);c.drawImage(cv2,Math.round(b.x*TS+8-cv2.width/2-camX),Math.round(b.y*TS+TS-cv2.height-camY+(Math.floor(now/400)%2)))}});
   const moving=p.t<1;
-  ents.push({y:p.fy,draw:()=>drawChar_(c,"hero:"+heroKey(save.avatar),p.dir,moving?(p.step%2?1:2):0,p.fx,p.fy,camX,camY,p,now)});
+  ents.push({y:p.fy,draw:()=>{drawChar_(c,"hero:"+heroKey(save.avatar),p.dir,moving?(p.step%2?1:2):0,p.fx,p.fy,camX,camY,p,now);grassOver_(c,p.fx,p.fy,camX,camY,now)}});
+  ambientUnder_(c,camX,camY,vw,vh,now);
   drawDust_(c,camX,camY,now);
   ents.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());
+  ambientOver_(c,camX,camY,vw,vh,now,Math.min(60,now-(X.lastDraw||now)));X.lastDraw=now;
   // ป้าย "!" เหนือครูแฟล็กเมื่อมีเรื่องสำคัญ
   const f=X.npcs.find(n=>n.id==="flag");
   if(f&&(!save.explore.talkedFlag||(save.explore.bossDone&&!save.explore.reported))){

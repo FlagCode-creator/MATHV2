@@ -483,3 +483,17 @@ body.flash::after{content:"";position:fixed;inset:0;background:#fff;opacity:.55;
 @keyframes bbBye{to{opacity:0}}
 #screen-battle.quake{animation:quake .45s}
 @keyframes quake{10%,50%,90%{transform:translate(-6px,3px)}30%,70%{transform:translate(6px,-3px)}}
+
+/* ===== กรอบแบบเกมพิกเซล ===== */
+/* กล่องบทสนทนา: กระดาษสีครีม + กรอบทอง 2 ชั้น + มุมหมุด */
+.dialog-box{background:#fff8e6;color:#3b2a1a;border:none;border-radius:2px;margin:0 9px 9px;width:calc(100% - 18px);
+  box-shadow:0 0 0 3px #3b2a1a,0 0 0 6px #e8b04a,0 0 0 9px #3b2a1a,0 14px 0 6px rgba(0,0,0,.45)}
+.dialog-box::before,.dialog-box::after{content:"";position:absolute;top:4px;width:6px;height:6px;background:#e8b04a;box-shadow:0 0 0 2px #3b2a1a}
+.dialog-box::before{left:4px}.dialog-box::after{right:4px}
+.dialog-name{display:inline-block;background:#4338ca;color:#fff;padding:4px 10px 3px;margin-left:2px;box-shadow:0 0 0 2px #1e1b4b,0 3px 0 2px #1e1b4b;border-radius:2px;letter-spacing:.04em}
+.dialog-text p{color:#3b2a1a}
+.dialog-next{color:#b45309}
+/* แผงและหน้าต่าง: มุมเหลี่ยมขึ้น + เส้นไฮไลต์ด้านใน */
+.panel{border-radius:6px;box-shadow:0 5px 0 #070a1c,inset 0 0 0 2px rgba(255,255,255,.05),inset 0 3px 0 rgba(255,255,255,.07)}
+.modal-card.panel,.modal .panel{box-shadow:0 0 0 3px #070a1c,0 0 0 5px #6d78e8,0 8px 0 5px rgba(0,0,0,.45),inset 0 3px 0 rgba(255,255,255,.07)}
+.toast{border-radius:4px;box-shadow:0 0 0 2px #070a1c,0 0 0 4px #fbbf24,0 6px 0 3px rgba(0,0,0,.4)}

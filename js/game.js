@@ -17,7 +17,16 @@ function goBack(){if(navBack==="explore")resumeExplore();else goMap()}
 /* ====================================================================== */
 /* Screens                                                                 */
 /* ====================================================================== */
+// เพลงของแต่ละหน้าจอ (undefined = เล่นเพลงเดิมต่อ · null = เงียบ)
+function screenTrack_(id){
+  if(id==="title"||id==="map")return "village";
+  if(id==="explore")return typeof X!=="undefined"&&X&&X.mapId==="field"?"field":"village";
+  if(id==="battle")return typeof B!=="undefined"&&B&&B.kind==="boss"?"boss":"battle";
+  if(id==="result")return null;
+  return undefined;
+}
 function showScreen(id){
+  const tr=screenTrack_(id);if(tr!==undefined&&typeof playBgm==="function")playBgm(tr);
   document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("active",s.id==="screen-"+id));
   window.scrollTo(0,0);
   const t=$("toast");if(t)t.classList.remove("show");
