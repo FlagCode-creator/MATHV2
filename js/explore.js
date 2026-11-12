@@ -372,7 +372,7 @@ function drawExplore_(now){
     if(art){drawArt_(c,art,Math.min(BOSS_ART_H,BOSS_ART_W*art.h/art.w),b.x*TS+8-camX,b.y*TS+TS-camY,X.bossEnt||(X.bossEnt={x:b.x,y:b.y,t:1}),false,now,monStyle_(b.sprite));return}
     const cv2=spriteCanvas(b.sprite);c.drawImage(cv2,Math.round(b.x*TS+8-cv2.width/2-camX),Math.round(b.y*TS+TS-cv2.height-camY+(Math.floor(now/400)%2)))}});
   const moving=p.t<1;
-  ents.push({y:p.fy,draw:()=>{drawChar_(c,"hero:"+heroKey(save.avatar),p.dir,moving?(p.step%2?1:2):0,p.fx,p.fy,camX,camY,p,now);grassOver_(c,p.fx,p.fy,camX,camY,now)}});
+  ents.push({y:p.fy,draw:()=>{if(!drawFarmHero_(c,p.dir,p.fx,p.fy,camX,camY,p,now))drawChar_(c,"hero:"+heroKey(save.avatar),p.dir,moving?(p.step%2?1:2):0,p.fx,p.fy,camX,camY,p,now);grassOver_(c,p.fx,p.fy,camX,camY,now)}});
   ambientUnder_(c,camX,camY,vw,vh,now);
   if(typeof critterEnts_==="function")critterEnts_(ents,c,camX,camY,now,now-(X.lastDraw||now));
   drawDust_(c,camX,camY,now);

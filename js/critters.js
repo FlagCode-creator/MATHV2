@@ -143,6 +143,31 @@ MS_CHARS.forEach(k=>{MS_SHEETS["ms_"+k]=1});
 const MS_SCALE={ms_npc_kid:0.85};
 function msKeyFor_(k){if(!k)return null;if(MS_SHEETS[k])return k;const s=k.indexOf("hero:")===0?k.slice(5):k;return MS_CHARS.has(s)?"ms_"+s:null}
 
+/* ---- ตัวผู้เล่นบนแผนที่: ตัวละครจาก Farm RPG Tiny Asset Pack (farm_hero_idle/walk.png) ----
+   ช่อง 32×32 · แถว 0 ลง · 1 ขึ้น · 2 หันขวา (หันซ้าย = กลับภาพ) · ยืน 4 เฟรม เดิน 6 เฟรม
+   ซื้อเสื้อที่ราวเสื้อ → เปลี่ยนสีชุดเอี๊ยม (เข้ม/กลาง) และเสื้อ (สว่าง) ตาม OUTFIT_PAL */
+const FARM_HERO_FOOT=25,FARM_HERO_SCALE=1.5,FARM_HERO_SHIRT=["#1f1f38","#1a3473","#2eafc7"],FARM_HERO_CACHE={};
+packImg_("farm_hero_idle");packImg_("farm_hero_walk");   // โหลดไว้ก่อนเข้าแผนที่
+function farmHeroImg_(anim){
+  const base=packImg_("farm_hero_"+anim);if(!base.complete||!base.naturalWidth)return null;
+  const to=save&&save.outfit&&typeof OUTFIT_PAL!=="undefined"&&OUTFIT_PAL[save.outfit];if(!to)return base;
+  const ck=anim+save.outfit;if(FARM_HERO_CACHE[ck])return FARM_HERO_CACHE[ck];
+  const cv=document.createElement("canvas");cv.width=base.naturalWidth;cv.height=base.naturalHeight;const c=cv.getContext("2d");c.drawImage(base,0,0);
+  const id=c.getImageData(0,0,cv.width,cv.height),d=id.data,map={};FARM_HERO_SHIRT.forEach((h,i)=>{map[h]=to[i]});
+  for(let i=0;i<d.length;i+=4){if(!d[i+3])continue;const t=map["#"+[d[i],d[i+1],d[i+2]].map(v=>v.toString(16).padStart(2,"0")).join("")];
+    if(t){d[i]=parseInt(t.slice(1,3),16);d[i+1]=parseInt(t.slice(3,5),16);d[i+2]=parseInt(t.slice(5,7),16)}}
+  c.putImageData(id,0,0);return FARM_HERO_CACHE[ck]=cv;
+}
+function drawFarmHero_(c,dir,fx,fy,camX,camY,ent,now){
+  const moving=ent&&ent.t<1,img=farmHeroImg_(moving?"walk":"idle");if(!img)return false;
+  const f=Math.floor(now/(moving?100:240))%(moving?6:4),row=dir==="down"?0:dir==="up"?1:2;
+  const x=Math.round(fx*TS+8-camX),y=Math.round(fy*TS+TS-camY);
+  c.fillStyle="rgba(0,0,0,.26)";c.beginPath();c.ellipse(x,y-1,6,2.2,0,0,Math.PI*2);c.fill();
+  c.save();c.translate(x,y);c.scale(dir==="left"?-FARM_HERO_SCALE:FARM_HERO_SCALE,FARM_HERO_SCALE);c.imageSmoothingEnabled=false;   // ขยายให้สูงพอ ๆ กับชาวบ้าน Mana Seed
+  c.drawImage(img,f*32,row*32,32,32,-16,-FARM_HERO_FOOT-1,32,32);c.restore();
+  return true;
+}
+
 /* ---- มอนสเตอร์ในทุ่ง: ปีศาจ/อสูรจากชุด Tiny RPG ย้อมสีตามทุ่ง ---- */
 const ZONE_MON={A:{hue:130,short:"บวก"},B:{hue:-75,short:"ลบ"},C:{hue:185,short:"คูณ"},D:{hue:35,short:"หาร"},E:{hue:0,short:"ผสม"}};
 const zoneMonName_=(stage,kind)=>((kind||"demon")==="demon"?"ปีศาจ":"อสูร")+(ZONE_MON[stage]?ZONE_MON[stage].short:"");
