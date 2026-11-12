@@ -730,4 +730,12 @@ function resetProgress(){
 updateSfxBtn_();
 bindExploreControls_();
 renderTitle();
-loadCustomAssets().then(()=>{if(CUSTOM.loaded&&!save&&$("screen-title").classList.contains("active"))renderTitle(true)});
+// ซ่อนฉากหน้าแรกและปุ่มเข้าเกมจนกว่าภาพใน manifest จะโหลดเสร็จ (กันภาพตัวละครสำรองโผล่แล้วสลับ
+// ทั้งหน้าแรก ช่องเลือกตัวละคร และหน้าเปลี่ยนตัวละคร) — โหลดช้าเกิน 15 วิ ก็ให้เล่นไปก่อน
+const assetsReady_=()=>$("app").classList.remove("assets-loading");
+setTimeout(assetsReady_,15000);
+loadCustomAssets().then(()=>{
+  if(!CUSTOM.loaded)return;
+  if(!save&&$("screen-title").classList.contains("active"))renderTitle(true);
+  else if(save&&$("screen-map").classList.contains("active"))goMap();   // เข้าเกมไปก่อนภาพโหลดเสร็จ: วาดหน้าแผนที่ใหม่
+}).finally(assetsReady_);

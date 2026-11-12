@@ -285,6 +285,10 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .preview-sprite{border:3px solid #070a1c;border-radius:12px;padding:18px 0 8px;margin:6px 0}
 .title-scene{border:3px solid var(--line);border-radius:16px;margin-top:14px;padding:10px 0 12px;box-shadow:0 5px 0 #070a1c}
 .title-scene .title-mascot{margin-top:4px}
+.title-scene{position:relative}
+.assets-loading .title-scene{background-image:none!important;background-color:#141a3c}
+.assets-loading .title-scene>*,.assets-loading .title-panel{visibility:hidden}
+.assets-loading .title-scene::after{content:"กำลังโหลด…";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#c8d4ff;font-size:14px;animation:bob 1.6s ease-in-out infinite}
 
 /* ---- ปุ่มเข้าโหมดผจญภัยบนแผนที่ ---- */
 .adventure-entry{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:3px solid var(--lime);border-radius:16px;padding:10px 12px;margin:4px 0 6px;
