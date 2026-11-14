@@ -169,7 +169,7 @@ function heroSpriteImg_(anim,avatar,outfit){
   c.putImageData(id,0,0);return HERO_SP_CACHE[ck]=cv;
 }
 function drawHeroSprite_(c,dir,fx,fy,camX,camY,ent,now){
-  const moving=ent&&ent.t<1,anim=moving?"walk":"idle",img=heroSpriteImg_(anim);if(!img)return false;
+  const moving=ent&&(ent.moving||ent.t<1),anim=moving?"walk":"idle",img=heroSpriteImg_(anim);if(!img)return false;
   if(dir==="left"||dir==="right")ent._face=dir;
   const f=Math.floor(now/(moving?95:150))%HERO_SP.frames[anim],flip=(ent._face||"right")==="left",s=HERO_SP.scale;
   const x=Math.round(fx*TS+8-camX),y=Math.round(fy*TS+TS-camY);

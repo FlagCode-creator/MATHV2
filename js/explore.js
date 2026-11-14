@@ -76,7 +76,7 @@ function loadMap_(mapId,x,y,dir){
   const old=X||{};
   X={
     mapId,m,W:m.rows[0].length,H:m.rows.length,
-    p:{x,y,fx:x,fy:y,t:1,dir:e.dir,step:0},
+    p:{x,y,fx:x,fy:y,t:1,dir:e.dir,step:0,moving:false},
     npcs:(m.npcs||[]).map(n=>({...n,fx:n.x,fy:n.y,ox:n.x,oy:n.y,t:1,step:0,next:performance.now()+rng(1500,3500)})),
     mons:[],held:old.held||null,running:old.running||false,last:old.last||0,
     canvas:$("ex-canvas"),frame:0,busy:false,invulnUntil:0,zone:null,pending:old.pending||null,
@@ -86,6 +86,9 @@ function loadMap_(mapId,x,y,dir){
   if(blocked_(x,y)&&!(m.warps||[]).some(w=>w.x===x&&w.y===y)){
     let best=null;for(let r=1;r<=4&&!best;r++)for(let dy=-r;dy<=r&&!best;dy++)for(let dx=-r;dx<=r;dx++){const nx=x+dx,ny=y+dy;if(Math.max(Math.abs(dx),Math.abs(dy))===r&&nx>=0&&ny>=0&&nx<X.W&&ny<X.H&&!blocked_(nx,ny)){best=[nx,ny];break}}
     const [sx,sy]=best||[m.spawn.x,m.spawn.y];X.p.x=X.p.fx=sx;X.p.y=X.p.fy=sy;e.x=sx;e.y=sy}
+  // เซฟที่มีตำแหน่งละเอียด (px,py) และยังอยู่ในช่องเดิม → วางตรงนั้น · เซฟเก่า/วาร์ป → กลางช่อง
+  if(Number.isFinite(e.px)&&Number.isFinite(e.py)){const [tx,ty]=footTile_(e.px,e.py);
+    if(tx===X.p.x&&ty===X.p.y){X.p.fx=e.px;X.p.fy=e.py}}
   if(m.zones)m.zones.forEach(z=>z.monsters.forEach(([mx,my],i)=>{
     X.mons.push({id:z.id+i,stage:z.stage,x:mx,y:my,fx:mx,fy:my,t:1,zone:z,next:performance.now()+rng(600,2000),
       tiny:i%2?"blood":"demon",hue:(ZONE_MON[z.stage]||{}).hue||0});
@@ -228,31 +231,55 @@ function exLoop_(now){
   }
 }
 const DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
-function updatePlayer_(now){
+/* ---- เดินอิสระแบบพิกเซล: ตำแหน่ง fx,fy เป็นช่องแบบทศนิยม · x,y = ช่องที่เท้าอยู่ (คำนวณใหม่ทุกเฟรม) ---- */
+const PLAYER_SPEED=5.5;                 // ช่อง/วินาที
+const EX_KEYS=new Set();                // ปุ่มทิศที่กดค้าง (อยู่นอก X เพราะ X สร้างใหม่ทุกครั้งที่โหลดแผนที่)
+const EX_STICK={x:0,y:0};               // จอยมือถือแบบอนาล็อก (ความยาว 0–1)
+function exInput_(){
+  let x=(EX_KEYS.has("right")?1:0)-(EX_KEYS.has("left")?1:0),y=(EX_KEYS.has("down")?1:0)-(EX_KEYS.has("up")?1:0);
+  if(x||y){if(x&&y){x*=Math.SQRT1_2;y*=Math.SQRT1_2}return {x,y}}
+  return {x:EX_STICK.x,y:EX_STICK.y};
+}
+const playerBlocked_=(x,y)=>blocked_(x,y)||!!npcAt_(x,y);
+// ช่องที่กล่องเท้าของผู้เล่นทับอยู่ (NPC/มอนห้ามเดินเข้ามา)
+function playerOccupies_(tx,ty){const [px,py]=footPx_(X.p.fx,X.p.fy);return boxTiles_(px-FOOT_W/2,py-FOOT_H,px+FOOT_W/2,py).some(([x,y])=>x===tx&&y===ty)}
+function boxesOverlap_(ax,ay,aw,ah,bx,by,bw,bh){return Math.abs(ax-bx)*2<aw+bw&&ay-ah<by&&by-bh<ay}
+function updatePlayer_(now,dt){
+  const p=X.p,mv=exInput_();
+  p.moving=false;
+  if(X.busy){X.doorPush=0;return}
+  if(mv.x||mv.y){
+    const d=Math.min(dt||16,50)/1000*PLAYER_SPEED,ox=p.fx,oy=p.fy;
+    [p.fx,p.fy]=moveBox_(p.fx,p.fy,mv.x*d,mv.y*d,FOOT_W,FOOT_H,playerBlocked_);
+    p.dir=Math.abs(mv.x)>Math.abs(mv.y)?(mv.x>0?"right":"left"):(mv.y>0?"down":"up");save.explore.dir=p.dir;
+    p.moving=Math.abs(p.fx-ox)+Math.abs(p.fy-oy)>1e-4;
+    if(p.moving&&now-(p.lastDust||0)>300){p.lastDust=now;const [fx,fy]=footPx_(p.fx,p.fy);dust_(fx,fy+2,1)}
+    tryDoorPush_(now,mv,oy);
+  }else X.doorPush=0;
+  const [tx,ty]=footTile_(p.fx,p.fy);
+  if(tx!==p.x||ty!==p.y){p.x=tx;p.y=ty;p.step++;playerTileChanged_();if(!X)return}
+  touchEnemies_(now);
+}
+// ดันขึ้นชนประตูบ้านต่อเนื่อง 150 ms = เข้าบ้าน (เหมือนเดินชนประตูแบบเดิม)
+function tryDoorPush_(now,mv,oy){
   const p=X.p;
-  if(p.t<1){
-    p.t=Math.min(1,(now-p.t0)/STEP_MS);
-    p.fx=p.sx+(p.x-p.sx)*p.t;p.fy=p.sy+(p.y-p.sy)*p.t;
-    if(p.t>=1)arrived_();
-    return;
-  }
-  if(X.busy||!X.held)return;
-  tryStep_(X.held,now);
+  if(mv.y>=-0.5||p.fy<oy-1e-3){X.doorPush=0;return}
+  const [tx,ty]=facingTile_(p.fx,p.fy,"up"),door=(X.m.doors||[]).find(d=>d.x===tx&&d.y===ty&&d.inside);
+  if(!door){X.doorPush=0;return}
+  if(!X.doorPush)X.doorPush=now;else if(now-X.doorPush>=150){X.doorPush=0;enterDoor_(door)}
 }
-function tryStep_(dir,now){
-  const p=X.p,[dx,dy]=DIRS[dir],nx=p.x+dx,ny=p.y+dy;
-  p.dir=dir;save.explore.dir=dir;
-  const mon=monAt_(nx,ny);if(mon){startFieldBattle_(mon);return}
-  if(bossAt_(nx,ny)){startBossBattle_();return}
-  if(blocked_(nx,ny)||npcAt_(nx,ny)){p.bump=now;
-    if(dir==="up"){const door=(X.m.doors||[]).find(d=>d.x===nx&&d.y===ny);if(door&&enterDoor_(door))return}   // เดินชนประตู = เข้าบ้าน
-    return}
-  p.sx=p.x;p.sy=p.y;p.x=nx;p.y=ny;p.t0=now;p.t=0;p.step++;
-  dust_(p.sx*TS+8,p.sy*TS+TS,p.step%2?2:1);
+// ชนมอน/บอส (ชั่วคราว: ยังเข้าฉากต่อสู้แบบเดิม — ระบบต่อสู้บนแผนที่มาแทนในขั้นถัดไป)
+function touchEnemies_(now){
+  if(X.busy||now<=X.invulnUntil)return;
+  const [px,py]=footPx_(X.p.fx,X.p.fy);
+  const mon=X.mons.find(m=>{const [mx,my]=footPx_(m.fx,m.fy);return boxesOverlap_(px,py,FOOT_W,FOOT_H,mx,my,MON_W,MON_H)});
+  if(mon){startFieldBattle_(mon);return}
+  const b=X.m.boss;
+  if(b&&!save.explore.bossDone){const [bx,by]=footPx_(b.x,b.y);if(boxesOverlap_(px,py,FOOT_W,FOOT_H,bx,by,16,12))startBossBattle_()}
 }
-function arrived_(){
+function playerTileChanged_(){
   const p=X.p,e=save.explore;
-  e.x=p.x;e.y=p.y;
+  e.x=p.x;e.y=p.y;e.px=p.fx;e.py=p.fy;
   const w=(X.m.warps||[]).find(w=>w.x===p.x&&w.y===p.y);
   if(w){warpTo_(w);return}
   checkZone_();
@@ -282,7 +309,7 @@ function updateNpcs_(now){
     if(!n.wander||X.busy||now<n.next)return;
     n.next=now+(n.range?rng(500,1600):rng(1800,4000));
     const dir=pickOne(Object.keys(DIRS)),[dx,dy]=DIRS[dir],nx=n.x+dx,ny=n.y+dy;n.dir=dir;
-    if(Math.abs(nx-n.ox)>(n.range||2)||Math.abs(ny-n.oy)>(n.rangeY||1)||blocked_(nx,ny)||npcAt_(nx,ny)||monAt_(nx,ny)||(nx===X.p.x&&ny===X.p.y))return;
+    if(Math.abs(nx-n.ox)>(n.range||2)||Math.abs(ny-n.oy)>(n.rangeY||1)||blocked_(nx,ny)||npcAt_(nx,ny)||monAt_(nx,ny)||playerOccupies_(nx,ny))return;
     n.sx=n.x;n.sy=n.y;n.x=nx;n.y=ny;n.t0=now;n.t=0;n.step++;dust_(n.sx*TS+8,n.sy*TS+TS,1);
   });
 }
@@ -296,7 +323,7 @@ function updateMonsters_(now){
     if(Math.random()<0.25){if(Math.random()<0.6)m.flip=!m.flip;return}   // หยุดมองซ้าย-ขวา
     const dir=pickOne(Object.keys(DIRS)),[dx,dy]=DIRS[dir],nx=m.x+dx,ny=m.y+dy;
     if(!inZone_(m.zone,nx,ny)||blocked_(nx,ny)||npcAt_(nx,ny)||monAt_(nx,ny))return;
-    if(nx===X.p.x&&ny===X.p.y){if(now>X.invulnUntil&&X.p.t>=1)startFieldBattle_(m);return}
+    if(playerOccupies_(nx,ny)){if(now>X.invulnUntil&&!X.busy)startFieldBattle_(m);return}
     m.sx=m.x;m.sy=m.y;m.x=nx;m.y=ny;m.t0=now;m.t=0;m.flip=dx<0?true:dx>0?false:m.flip;
   });
 }
@@ -371,7 +398,7 @@ function drawExplore_(now){
     const art=customSpriteInfo(b.sprite);
     if(art){drawArt_(c,art,Math.min(BOSS_ART_H,BOSS_ART_W*art.h/art.w),b.x*TS+8-camX,b.y*TS+TS-camY,X.bossEnt||(X.bossEnt={x:b.x,y:b.y,t:1}),false,now,monStyle_(b.sprite));return}
     const cv2=spriteCanvas(b.sprite);c.drawImage(cv2,Math.round(b.x*TS+8-cv2.width/2-camX),Math.round(b.y*TS+TS-cv2.height-camY+(Math.floor(now/400)%2)))}});
-  const moving=p.t<1;
+  const moving=p.moving;
   ents.push({y:p.fy,draw:()=>{if(!drawHeroSprite_(c,p.dir,p.fx,p.fy,camX,camY,p,now))drawChar_(c,"hero:"+heroKey(save.avatar),p.dir,moving?(p.step%2?1:2):0,p.fx,p.fy,camX,camY,p,now);grassOver_(c,p.fx,p.fy,camX,camY,now)}});
   ambientUnder_(c,camX,camY,vw,vh,now);
   if(typeof critterEnts_==="function")critterEnts_(ents,c,camX,camY,now,now-(X.lastDraw||now));
@@ -509,19 +536,20 @@ function bindExploreControls_(){
     if(!X||!$("screen-explore").classList.contains("active"))return;
     if(!$("dialog").classList.contains("hidden")){if(ev.key===" "||ev.key==="Enter"){ev.preventDefault();advanceDialog()}return}
     if(!$("puzzle-modal").classList.contains("hidden"))return;
-    if(keyDir[ev.key]){ev.preventDefault();X.held=keyDir[ev.key]}
+    if(keyDir[ev.key]){ev.preventDefault();EX_KEYS.add(keyDir[ev.key])}
     else if(ev.key===" "||ev.key==="Enter"||ev.key==="z"||ev.key==="Z"){ev.preventDefault();interact_()}
   });
-  document.addEventListener("keyup",ev=>{if(X&&keyDir[ev.key]===X.held)X.held=null});
+  document.addEventListener("keyup",ev=>{if(keyDir[ev.key])EX_KEYS.delete(keyDir[ev.key])});
+  window.addEventListener("blur",()=>EX_KEYS.clear());
 }
 
 // จอยสติ๊ก (ลูกกลิ้ง): แตะตรงไหนในโซนซ้ายล่างก็ได้ จอยจะย้ายไปอยู่ใต้นิ้ว แล้วลากไปทางที่ต้องการเดิน
-// ยังเดินทีละช่อง (เลือกทิศตามแกนที่ลากมากกว่า) เพื่อให้ปริศนาและการชนมอนสเตอร์ทำงานเหมือนเดิม
+// อ่านเป็นเวกเตอร์ (อนาล็อก) → เดินได้ทุกทิศ ช้า/เร็วตามระยะที่ลาก
 function bindJoystick_(){
   const zone=$("ex-stick-zone"),base=$("ex-stick"),knob=$("ex-knob");
   let id=null,cx=0,cy=0;
   const radius=()=>base.offsetWidth/2;
-  const reset=()=>{id=null;base.classList.remove("active","floating");base.style.left=base.style.top="";knob.style.transform="";if(X)X.held=null};
+  const reset=()=>{id=null;base.classList.remove("active","floating");base.style.left=base.style.top="";knob.style.transform="";EX_STICK.x=EX_STICK.y=0};
   zone.addEventListener("pointerdown",ev=>{
     ev.preventDefault();if(id!==null)return;
     id=ev.pointerId;zone.setPointerCapture(id);
@@ -535,9 +563,8 @@ function bindJoystick_(){
     if(ev.pointerId!==id)return;
     const r=radius(),dx=ev.clientX-cx,dy=ev.clientY-cy,dist=Math.hypot(dx,dy),k=dist>r?r/dist:1;
     knob.style.transform=`translate(${dx*k}px,${dy*k}px)`;
-    if(!X)return;
-    if(dist<r*0.28){X.held=null;return}
-    X.held=Math.abs(dx)>Math.abs(dy)?(dx>0?"right":"left"):(dy>0?"down":"up");
+    if(dist<r*0.28){EX_STICK.x=EX_STICK.y=0;return}
+    const len=Math.min(1,dist/r)/dist;EX_STICK.x=dx*len;EX_STICK.y=dy*len;
   };
   zone.addEventListener("pointermove",move);
   ["pointerup","pointercancel","lostpointercapture"].forEach(t=>zone.addEventListener(t,ev=>{if(ev.pointerId===id)reset()}));
@@ -628,9 +655,16 @@ function askNumber({title,text,answer,hint,portrait}){
   });
 }
 
-async function interact_(){
-  if(!X||X.busy||X.p.t<1)return;
-  const p=X.p,[dx,dy]=DIRS[p.dir],tx=p.x+dx,ty=p.y+dy,e=save.explore;
+// คุย/ตรวจสอบ: ช่องข้างหน้าเท้า (ถ้าไม่มีอะไร ลองช่องที่ยืนอยู่) · คืน true ถ้ามีอะไรให้ทำ
+const NO_HIT={};
+function interact_(){
+  if(!X||X.busy)return false;
+  const p=X.p;
+  for(const [tx,ty] of [facingTile_(p.fx,p.fy,p.dir),[p.x,p.y]])if(interactAt_(tx,ty)!==NO_HIT)return true;
+  return false;
+}
+function interactAt_(tx,ty){
+  const e=save.explore;
   const npc=npcAt_(tx,ty);if(npc)return talkNpc_(npc);
   const mon=monAt_(tx,ty);if(mon)return startFieldBattle_(mon);
   if(bossAt_(tx,ty))return startBossBattle_();
@@ -650,6 +684,7 @@ async function interact_(){
   if(t==="c"){const ch=X.m.chests.find(c=>c.x===tx&&c.y===ty);if(ch)return openChest_(ch)}
   if(t==="C")return toast("หีบนี้เปิดไปแล้ว");
   if(t==="G"||t==="b"){const gid=gateAt_(tx,ty);if(gid)return tryGate_(gid)}
+  return NO_HIT;
 }
 
 async function talkNpc_(npc){
