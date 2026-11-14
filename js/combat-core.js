@@ -94,3 +94,6 @@ function monStateNext_(state,distTiles,inZone){
 
 /* ---- ผู้เล่นอมตะชั่วครู่หลังโดนตี ---- */
 function canBeHit_(now,invulnUntil){return now>invulnUntil}
+
+/* ---- เหรียญดรอป: เหรียญละไม่เกิน 5 ---- */
+function coinSplit_(gold){const out=[];let g=Math.max(0,Math.round(gold));while(g>0){const v=Math.min(5,g);out.push(v);g-=v}return out}

@@ -127,6 +127,12 @@ function recordBattle_(B,won){
   dailyAdd_("correct",B.correct);if(B.crits)dailyAdd_("crit",B.crits);
   persist();
 }
+// ปราบมอนสเตอร์บนแผนที่ (ไม่ผ่านฉากต่อสู้) → บันทึกลงสมุดมอนสเตอร์
+function recordFieldKill_(name,tiny,hue,stage){
+  if(!save)return;save.book=save.book||{};
+  const r=save.book[name]||(save.book[name]={name,tiny:tiny||null,hue:hue||0,sprite:null,stage:stage||null,seen:0,won:0,correct:0,wrong:0});
+  r.seen++;r.won++;
+}
 function bookThumb_(r){
   if(r.tiny&&typeof tinyTinted_==="function"){const src=tinyTinted_(r.tiny,"idle",r.hue);if(src.width||src.naturalWidth){const cv=document.createElement("canvas");cv.width=40;cv.height=28;
     const c=cv.getContext("2d");c.imageSmoothingEnabled=false;c.translate(40,0);c.scale(-1,1);c.drawImage(src,32,30,40,28,0,0,40,28);return `<img src="${cv.toDataURL()}" class="pixelated" style="width:60px;height:42px" alt="">`}}

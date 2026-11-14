@@ -79,3 +79,9 @@ test("canBeHit_ respects invulnerability", () => {
   assert.equal(c.canBeHit_(1000, 1500), false);
   assert.equal(c.canBeHit_(1600, 1500), true);
 });
+
+test("coinSplit_ splits gold into coins of at most 5", () => {
+  assert.deepEqual([...c.coinSplit_(14)], [5, 5, 4]);
+  assert.deepEqual([...c.coinSplit_(3)], [3]);
+  assert.deepEqual([...c.coinSplit_(0)], []);
+});

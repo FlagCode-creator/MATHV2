@@ -150,8 +150,8 @@ function msKeyFor_(k){if(!k)return null;if(MS_SHEETS[k])return k;const s=k.index
 /* ---- ตัวผู้เล่น: Soldier จาก Tiny RPG Character Asset Pack 01 (soldier_idle/walk.png) ----
    ช่อง 100×100 เรียงแนวนอน หันขวา (หันซ้าย = กลับภาพ · เดินขึ้น/ลง = หันทางเดิมไว้) · เท้าอยู่แถว 56 กลางตัว x=49 (ลบเงาที่ติดมากับภาพออกแล้ว)
    ชุดเกราะ (สีเทาฟ้า) และเสื้อ (สีแดง) ย้อมตามสีอาชีพ (HERO_SHIRT) · ซื้อเสื้อที่ราวเสื้อ → ใช้สีนั้นแทน · นักเรียนชาย = สีเดิมของภาพ */
-const HERO_SP={foot:56,cx:49,scale:1.5,frames:{idle:6,walk:8}},HERO_SP_CACHE={};
-["idle","walk"].forEach(a=>packImg_("soldier_"+a));   // โหลดไว้ก่อนเข้าแผนที่
+const HERO_SP={foot:56,cx:49,scale:1.5,frames:{idle:6,walk:8,attack01:6}},HERO_SP_CACHE={};
+["idle","walk","attack01"].forEach(a=>packImg_("soldier_"+a));   // โหลดไว้ก่อนเข้าแผนที่
 function heroSpriteColor_(avatar,outfit){
   if(outfit&&OUTFIT_PAL[outfit])return outfit;
   const k=heroKey(avatar);return k==="student_m"?null:HERO_SHIRT[k]||null;
@@ -173,9 +173,10 @@ function heroSpriteImg_(anim,avatar,outfit){
   c.putImageData(id,0,0);return HERO_SP_CACHE[ck]=cv;
 }
 function drawHeroSprite_(c,dir,fx,fy,camX,camY,ent,now){
-  const moving=ent&&(ent.moving||ent.t<1),anim=moving?"walk":"idle",img=heroSpriteImg_(anim);if(!img)return false;
+  const moving=ent&&(ent.moving||ent.t<1),swinging=ent&&ent.swingUntil>now&&now>=(ent.swingAt||0);
+  const anim=swinging?"attack01":moving?"walk":"idle",img=heroSpriteImg_(anim)||heroSpriteImg_("idle");if(!img)return false;
   if(dir==="left"||dir==="right")ent._face=dir;
-  const f=Math.floor(now/(moving?95:150))%HERO_SP.frames[anim],flip=(ent._face||"right")==="left",s=HERO_SP.scale;
+  const f=swinging?Math.min(5,Math.floor((now-ent.swingAt)/55)):Math.floor(now/(moving?95:150))%HERO_SP.frames[anim],flip=(ent._face||"right")==="left",s=HERO_SP.scale;
   const x=Math.round(fx*TS+8-camX),y=Math.round(fy*TS+TS-camY);
   c.fillStyle="rgba(0,0,0,.26)";c.beginPath();c.ellipse(x,y-1,6,2.2,0,0,Math.PI*2);c.fill();
   c.save();c.translate(x,y);c.scale(flip?-s:s,s);c.imageSmoothingEnabled=false;   // ขยายให้สูงพอ ๆ กับชาวบ้าน Mana Seed

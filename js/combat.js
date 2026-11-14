@@ -26,6 +26,8 @@ function updateCombat_(now,dt){
   if(X.busy)return;
   const sec=Math.min(dt||16,50)/1000,[ppx,ppy]=footPx_(X.p.fx,X.p.fy);
   X.mons.forEach(m=>{if(!m.dead)updateMon_(m,now,sec,ppx,ppy)});
+  if(X.attackHeld)swing_(now);
+  updateCoins_(now,sec);updateRespawns_(now);
   combatContact_(now);
 }
 function updateMon_(m,now,sec,ppx,ppy){
@@ -107,6 +109,7 @@ function playerDownOnMap_(){
 /* ---- ตัวเลขลอยบนแผนที่ (พิกัดโลก) ---- */
 function floatText2_(text,wx,wy,color,now){(X.floats=X.floats||[]).push({text,wx,wy,color,t0:now})}
 function drawCombatOverlay_(c,camX,camY,now){
+  drawCombatMarks_(c,camX,camY,now);drawCanvasFx_(c,camX,camY,now);
   if(!X.floats||!X.floats.length)return;
   c.save();c.font="bold 8px sans-serif";c.textAlign="center";c.textBaseline="middle";
   X.floats=X.floats.filter(f=>{
@@ -125,4 +128,122 @@ function spawnTestMon_(tier){
   const m=initMon_({id:"test"+Date.now(),stage:z.stage,x,y,zone:z,tiny:tier%2?"demon":"blood",hue:(ZONE_MON[z.stage]||{}).hue||0},0);
   m.tier=tier;m.armor=m.armorMax=armorFor_(tier,0);m.hp=m.maxHp=monHp_(tier,effAtk());
   X.mons.push(m);return m;
+}
+
+/* ====================================================================== */
+/* ฟันดาบ · เกราะ · ตาย · เหรียญ · เกิดใหม่                                    */
+/* ====================================================================== */
+const COIN_PULL_TILES=2.5;   // เหรียญดูดเข้าหาผู้เล่นในระยะนี้ (ช่อง)
+const SWING_MS=330,SWING_REPEAT_MS=380,SWING_RADIUS=22,RESPAWN_MS=25000;
+// ปุ่ม A / Space / J: มีคน/ของให้คุยตรงหน้า → คุย · ไม่มี → ฟัน
+function actionButton_(){if(!X||X.busy)return;if(interact_())return;swing_(performance.now())}
+function swing_(now){
+  if(!X||X.busy)return;
+  const p=X.p;if(now<(p.nextSwing||0))return;
+  p.swingUntil=now+SWING_MS;p.swingAt=now;p.nextSwing=now+SWING_REPEAT_MS;
+  // ฟันซ้าย/ขวาตามที่หัน · ถ้ากดขึ้น/ลงอยู่ ฟันขึ้น/ลง
+  const mv=exInput_(),dir=Math.abs(mv.y)>Math.abs(mv.x)&&mv.y?(mv.y<0?"up":"down"):(p._face||(p.dir==="left"?"left":"right"));
+  p.swingDir=dir;
+  const [ox,oy]=footPx_(p.fx,p.fy),cy=oy-6;
+  const dmg=swordDmg_(effAtk())*(X.powerUntil>now?2:1);
+  X.mons.forEach(m=>{if(m.dead)return;const [mx,my]=footPx_(m.fx,m.fy);if(inArc_(ox,cy,dir,mx,my-6,SWING_RADIUS))hitMon_(m,dmg,p.fx,p.fy,now,false)});
+}
+// คืน true ถ้ามอนตาย
+function hitMon_(m,dmg,fromFx,fromFy,now,breaksArmor){
+  if(m.dead)return false;
+  const [mx,my]=footPx_(m.fx,m.fy),sc=m.tier===3?1.3:1;
+  if(m.armor>0&&!breaksArmor){   // มีเกราะ → ฟันไม่เข้า
+    floatText2_("ฟันไม่เข้า!",mx,my-28*sc,"#cbd5e1",now);canvasFx_("hurt",mx,my-10,0.5);SFX.block&&SFX.block();
+    return false;
+  }
+  if(breaksArmor&&m.armor>0){m.armor--;floatText2_(m.armor?"เกราะแตก! (เหลือ 1)":"เกราะแตก!",mx,my-36*sc,"#7dd3fc",now)}
+  m.hp=Math.max(0,m.hp-dmg);m.flashUntil=now+140;m.anim="hurt";m.animAt=now;m.animUntil=now+400;
+  const dx=m.fx-fromFx,dy=m.fy-fromFy,len=Math.hypot(dx,dy)||1;m.kx=dx/len*7;m.ky=dy/len*7;
+  m.pauseUntil=Math.max(m.pauseUntil,now+300);if(m.state==="wander")m.state="chase";
+  floatText2_("-"+dmg,mx,my-28*sc,"#fde047",now);canvasFx_("hit",mx,my-10,0.35);SFX.hit&&SFX.hit();
+  if(m.hp<=0){killMon_(m,now);return true}
+  return false;
+}
+function killMon_(m,now){
+  m.dead=true;m.anim="death";m.animAt=now;m.animUntil=now+500;m.kx=m.ky=0;
+  const [mx,my]=footPx_(m.fx,m.fy),e=save.explore,z=m.stage;
+  canvasFx_("smoke",mx,my-8,0.45);
+  setTimeout(()=>{if(X)X.mons=X.mons.filter(q=>q!==m)},500);
+  const s=monsterStats(z),r=fieldReward_(s.gold,s.xp,!!m.night,rewardMul());
+  coinSplit_(r.gold).forEach(v=>{const a=Math.random()*Math.PI*2,sp=18+Math.random()*16;
+    (X.coins=X.coins||[]).push({wx:mx,wy:my-6,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-50,gold:v,t0:now})});
+  // นับการปราบ (ภารกิจประตูทุ่ง · ภารกิจรายวัน · สมุดมอนสเตอร์ · สถิติ)
+  e.kills[z]=(e.kills[z]||0)+1;
+  if(m.armorMax>0){e.armorKills=e.armorKills||{};e.armorKills[z]=(e.armorKills[z]||0)+1}
+  dailyAdd_("kill");
+  const name=m.night?NIGHT_MON[m.night].name:zoneMonName_(z,m.tiny);
+  if(typeof recordFieldKill_==="function")recordFieldKill_(name,m.night||m.tiny,m.hue||0,z);
+  save.stats.battles++;save.stats.wins++;
+  if(m.night)NIGHT_STATE.gone[m.night]=true;
+  else (X.respawns=X.respawns||[]).push({at:now+RESPAWN_MS,proto:{id:m.id,stage:z,zone:m.zone,tiny:m.tiny,hue:m.hue},index:m.index});
+  const ups=gainXp_(r.xp);
+  if(ups.length){SFX.levelUp();spriteFx_("levelup",{scale:2.2,fps:20});toast(`⬆️ เลเวลอัป! Lv.${save.level} · ไปอัปทักษะได้ที่เมนู ☰`)}
+  persist();updateExHud_();
+  killProgress_(z);
+}
+// ข้อความความคืบหน้าภารกิจทุ่ง (ไม่หยุดเกม ยกเว้นตอนครบ)
+function killProgress_(z){
+  const e=save.explore,k=e.kills[z];
+  if(k===QUEST_KILLS)exSay_([{mood:"happy",text:`ปราบ${zoneMonName_(z)}ครบ ${QUEST_KILLS} ตัวแล้ว! ตอนนี้ไปไขปริศนาเพื่อเปิดทางไป${nextZoneName_(z)}ได้เลย`}]);
+  else if(k<QUEST_KILLS)toast(`${ZONE_NAMES[z]}: ปราบแล้ว ${k}/${QUEST_KILLS}`);
+}
+function updateRespawns_(now){
+  if(!X.respawns||!X.respawns.length)return;
+  X.respawns=X.respawns.filter(r=>{
+    if(now<r.at)return true;
+    const z=r.proto.zone;
+    for(let k=0;k<20;k++){
+      const x=rng(z.x0,z.x1),y=rng(z.y0,z.y1);
+      if(blocked_(x,y)||npcAt_(x,y)||Math.abs(x-X.p.x)+Math.abs(y-X.p.y)<5)continue;
+      const m=initMon_({...r.proto,x,y,fx:x,fy:y},r.index);X.mons.push(m);dust_(x*TS+8,y*TS+TS,4);return false;
+    }
+    r.at=now+2000;return true;   // ยังหาที่ไม่ได้ → ลองใหม่
+  });
+}
+function updateCoins_(now,sec){
+  if(!X.coins||!X.coins.length)return;
+  const [px,py]=footPx_(X.p.fx,X.p.fy);
+  X.coins=X.coins.filter(c=>{
+    const age=now-c.t0;if(age>20000)return false;
+    const dx=px-c.wx,dy=(py-6)-c.wy,d=Math.hypot(dx,dy);
+    if(age>400&&d<TS*COIN_PULL_TILES){if(d<5){save.gold+=c.gold;SFX.coin&&SFX.coin();updateExHud_();persist();return false}c.vx=dx/d*160;c.vy=dy/d*160}
+    else{c.vx*=Math.pow(0.05,sec);c.vy=c.vy*Math.pow(0.05,sec)+(age<400?180*sec:0)}
+    c.wx+=c.vx*sec;c.wy+=c.vy*sec;return true;
+  });
+}
+
+/* ---- เอฟเฟกต์ภาพเคลื่อนไหวในพิกัดโลก (ตามกล้อง) จากแถบใน assets/fx ---- */
+const FX_IMG={};
+function fxImg_(name){if(!FX_IMG[name]){const i=new Image();i.src=`assets/fx/${name}.png?v=${FX_VER}`;FX_IMG[name]=i}return FX_IMG[name]}
+function canvasFx_(name,wx,wy,scale,fps){if(!X||!FX_SHEETS[name])return;fxImg_(name);(X.fxs=X.fxs||[]).push({name,wx,wy,scale:scale||1,fps:fps||20,t0:performance.now()})}
+function drawCanvasFx_(c,camX,camY,now){
+  if(!X.fxs||!X.fxs.length)return;
+  X.fxs=X.fxs.filter(f=>{
+    const [w,h,n]=FX_SHEETS[f.name],fr=Math.floor(Math.max(0,now-f.t0)*f.fps/1000);if(fr>=n)return false;
+    const img=fxImg_(f.name);if(!img.complete||!img.naturalWidth)return true;
+    const W=w*f.scale,H=h*f.scale;c.drawImage(img,fr*w,0,w,h,Math.round(f.wx-W/2-camX),Math.round(f.wy-H/2-camY),W,H);
+    return true;
+  });
+}
+// แถบเกราะ/HP เหนือหัวมอน + วงฟัน + เหรียญ
+function drawCombatMarks_(c,camX,camY,now){
+  X.mons.forEach(m=>{
+    if(m.dead||(m.armor<=0&&m.hp>=m.maxHp))return;
+    const [mx,my]=footPx_(m.fx,m.fy),sc=m.tier===3?1.3:1,x=Math.round(mx-8-camX),y=Math.round(my-26*sc-camY);
+    c.fillStyle="#181425";c.fillRect(x-1,y-1,18,4);c.fillStyle="#3a0f17";c.fillRect(x,y,16,2);c.fillStyle="#e43b44";c.fillRect(x,y,Math.round(16*m.hp/m.maxHp),2);
+    for(let i=0;i<m.armor;i++){const ax=x+17+i*6,ay=y-3;   // โล่เล็ก ๆ = เกราะ 1 ชั้น
+      c.fillStyle="#181425";c.fillRect(ax-1,ay-1,7,8);c.fillStyle="#8b9bb4";c.fillRect(ax,ay,5,5);c.fillRect(ax+1,ay+5,3,1);c.fillStyle="#c0cbdc";c.fillRect(ax+1,ay+1,1,3)}
+  });
+  const p=X.p;
+  if(p.swingAt&&now-p.swingAt<120&&now>=p.swingAt){   // วงฟันสีขาวให้เห็นว่าฟันไปทางไหน
+    const [ox,oy]=footPx_(p.fx,p.fy),a={right:0,down:Math.PI/2,left:Math.PI,up:-Math.PI/2}[p.swingDir]||0,k=(now-p.swingAt)/120;
+    c.save();c.globalAlpha=0.85*(1-k);c.strokeStyle="#ffffff";c.lineWidth=3;c.beginPath();c.arc(ox-camX,oy-6-camY,SWING_RADIUS-4,a-1.1,a+1.1);c.stroke();c.restore();
+  }
+  (X.coins||[]).forEach(cn=>{const x=Math.round(cn.wx-camX),y=Math.round(cn.wy-camY);
+    c.fillStyle="#7a4a10";c.fillRect(x-2,y-2,5,5);c.fillStyle="#feae34";c.fillRect(x-2,y-1,5,3);c.fillRect(x-1,y-2,3,5);c.fillStyle="#fee761";c.fillRect(x-1,y-1,1,2)});
 }

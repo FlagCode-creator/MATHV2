@@ -12,6 +12,7 @@ function ensureExplore_(){
   if(!save.explore)save.explore=newExploreState_();
   const e=save.explore;
   if(e.hp==null||e.hp>effMaxHp())e.hp=effMaxHp();
+  if(!e.armorKills)e.armorKills={A:0,B:0,C:0,D:0,E:0};   // เซฟเก่าไม่มีตัวนับมอนเกราะ
   return e;
 }
 async function enterExplore(){
@@ -23,7 +24,7 @@ async function enterExplore(){
   checkZone_();
   if(first)await exSay_([
     {mood:"hello",text:"ยินดีต้อนรับสู่โหมดผจญภัย! ตอนนี้เธอเดินสำรวจหมู่บ้านและทุ่งหญ้าได้เองแล้ว"},
-    {mood:"explain",text:"ใช้ปุ่มลูกศรด้านล่างซ้ายเพื่อเดิน กดปุ่ม A เพื่อคุย อ่านป้าย หรือเปิดหีบ (บนคอมใช้ลูกศร/WASD และ Space)"},
+    {mood:"explain",text:"ลากจอยด้านล่างซ้ายเพื่อเดิน กดปุ่ม A เพื่อคุย อ่านป้าย เปิดหีบ หรือฟันมอนสเตอร์ (บนคอม: ลูกศร/WASD เดิน · Space ฟัน/คุย · Z คุย)"},
     {mood:"remind",text:"ครูรออยู่ที่ลานน้ำพุกลางหมู่บ้าน มาคุยกับครูก่อนนะ แล้วครูจะบอกภารกิจแรกให้"}
   ]);
 }
@@ -54,11 +55,6 @@ async function resumeExplore(){
   if(pend&&pend.lost){
     const sp=EXPLORE_MAPS.village.spawn;loadMap_("village",sp.x,sp.y,"up");resizeExplore_();updateExHud_();
     await exSay_([{mood:"sad",text:"ไม่เป็นไรนะ ครูพาเธอกลับมาพักที่หมู่บ้านแล้ว HP เต็มแล้ว ลองอ่านวิธีคิดข้อที่พลาดแล้วค่อยไปสู้ใหม่"}]);
-  }
-  if(pend&&pend.kill){
-    const z=pend.kill,k=e.kills[z];
-    if(k===QUEST_KILLS)await exSay_([{mood:"happy",text:`ปราบ${zoneMonName_(z)}ครบ ${QUEST_KILLS} ตัวแล้ว! ตอนนี้ไปไขปริศนาเพื่อเปิดทางไป${nextZoneName_(z)}ได้เลย`}]);
-    else if(k<QUEST_KILLS)toast(`${ZONE_NAMES[z]}: ปราบแล้ว ${k}/${QUEST_KILLS}`);
   }
   if(pend&&pend.boss)await exSay_([{mood:"celebrate",text:"ปราบราชาสไลม์ตัวเลขได้แล้ว! ทุ่งหญ้าจำนวนกลับมาสงบสุข กลับไปรายงานครูที่หมู่บ้านนะ"}]);
   updateExHud_();
@@ -506,17 +502,21 @@ window.addEventListener("resize",()=>{if(X&&X.running)resizeExplore_()});
 /* ====================================================================== */
 function bindExploreControls_(){
   bindJoystick_();
-  $("ex-a").addEventListener("pointerdown",ev=>{ev.preventDefault();interact_()});
+  // ปุ่ม A: คุย/ตรวจสอบถ้ามีอะไรอยู่ตรงหน้า ไม่งั้นฟัน · กดค้าง = ฟันต่อเนื่อง
+  const ea=$("ex-a"),release=()=>{if(X)X.attackHeld=false};
+  ea.addEventListener("pointerdown",ev=>{ev.preventDefault();if(!X||X.busy)return;if(interact_())return;X.attackHeld=true;swing_(performance.now())});
+  ["pointerup","pointercancel","pointerleave"].forEach(t=>ea.addEventListener(t,release));
   const keyDir={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right",w:"up",s:"down",a:"left",d:"right",W:"up",S:"down",A:"left",D:"right"};
   document.addEventListener("keydown",ev=>{
     if(!X||!$("screen-explore").classList.contains("active"))return;
     if(!$("dialog").classList.contains("hidden")){if(ev.key===" "||ev.key==="Enter"){ev.preventDefault();advanceDialog()}return}
     if(!$("puzzle-modal").classList.contains("hidden"))return;
     if(keyDir[ev.key]){ev.preventDefault();EX_KEYS.add(keyDir[ev.key])}
-    else if(ev.key===" "||ev.key==="Enter"||ev.key==="z"||ev.key==="Z"){ev.preventDefault();interact_()}
+    else if(ev.key===" "||ev.key==="j"||ev.key==="J"){ev.preventDefault();if(ev.repeat||X.busy)return;if(interact_())return;X.attackHeld=true;swing_(performance.now())}
+    else if(ev.key==="Enter"||ev.key==="z"||ev.key==="Z"){ev.preventDefault();interact_()}
   });
-  document.addEventListener("keyup",ev=>{if(keyDir[ev.key])EX_KEYS.delete(keyDir[ev.key])});
-  window.addEventListener("blur",()=>EX_KEYS.clear());
+  document.addEventListener("keyup",ev=>{if(keyDir[ev.key])EX_KEYS.delete(keyDir[ev.key]);if((ev.key===" "||ev.key==="j"||ev.key==="J")&&X)X.attackHeld=false});
+  window.addEventListener("blur",()=>{EX_KEYS.clear();if(X)X.attackHeld=false});
 }
 
 // จอยสติ๊ก (ลูกกลิ้ง): แตะตรงไหนในโซนซ้ายล่างก็ได้ จอยจะย้ายไปอยู่ใต้นิ้ว แล้วลากไปทางที่ต้องการเดิน
