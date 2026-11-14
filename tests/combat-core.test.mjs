@@ -89,3 +89,12 @@ test("coinSplit_ splits gold into coins of at most 5", () => {
 test("isNumericAnswer_ decides number pad vs choice buttons", () => {
   assert.deepEqual(["14", "-3", "2.5", "1/2", "x", 7].map(c.isNumericAnswer_), [true, true, true, false, false, true]);
 });
+
+test("gateReady_ needs an armored kill in zones B-E", () => {
+  assert.equal(c.gateReady_("A", 3, 0, 3), true);
+  assert.equal(c.gateReady_("B", 3, 0, 3), false);
+  assert.equal(c.gateReady_("B", 3, 1, 3), true);
+  assert.equal(c.gateReady_("C", 2, 1, 3), false);
+  assert.equal(c.gateNeedsArmor_("A"), false);
+  assert.equal(c.gateNeedsArmor_("E"), true);
+});

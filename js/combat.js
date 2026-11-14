@@ -23,12 +23,13 @@ function updateCombat_(now,dt){
   if(!X)return;
   updateNightMons_(now);
   X.mons.forEach((m,i)=>{if(m.tier==null)initMon_(m,i)});
-  updateSkillButton_(now);
+  updateSkillButton_(now);updatePowerChip_(now);
+  if(X.defShield===undefined)X.defShield=!!(X.m.zones&&skillLv("def")>=3);   // ทักษะป้องกันขั้น 3: กันการชนครั้งแรกหลังเข้าทุ่ง
   if(X.busy)return;
   const sec=Math.min(dt||16,50)/1000,[ppx,ppy]=footPx_(X.p.fx,X.p.fy);
   X.mons.forEach(m=>{if(!m.dead)updateMon_(m,now,sec,ppx,ppy)});
   if(X.attackHeld)swing_(now);
-  updateCoins_(now,sec);updateRespawns_(now);
+  updateCoins_(now,sec);updateRespawns_(now);updateAmbush_(now);
   combatContact_(now);
 }
 function updateMon_(m,now,sec,ppx,ppy){
@@ -79,7 +80,8 @@ function combatContact_(now){
   const m=X.mons.find(m=>{if(m.dead)return false;const [mx,my]=footPx_(m.fx,m.fy);return boxesOverlap_(px,py,FOOT_W,FOOT_H,mx,my,MON_W,MON_H)});
   if(!m)return;
   const atk=monsterStats(m.stage).atk*(m.night?1.2:1);
-  m.pauseUntil=now+MON_PAUSE_MS;m.animUntil=now+400;m.anim="attack01";m.animAt=now;
+  m.pauseUntil=now+MON_PAUSE_MS;
+  if(X.defShield){X.defShield=false;X.invulnUntil=now+PLAYER_INVULN_MS;const [fx,fy]=footPx_(X.p.fx,X.p.fy);canvasFx_("shield",fx,fy-10,0.6);floatText2_("BLOCK!",fx,fy-32,"#7dd3fc",now);SFX.block&&SFX.block();return}m.animUntil=now+400;m.anim="attack01";m.animAt=now;
   hurtPlayer_(contactDmg_(atk,damageTakenMul()),m.fx,m.fy,now);
 }
 function hurtPlayer_(amount,fromFx,fromFy,now){
@@ -167,7 +169,7 @@ function hitMon_(m,dmg,fromFx,fromFy,now,breaksArmor){
 }
 function killMon_(m,now){
   m.dead=true;m.anim="death";m.animAt=now;m.animUntil=now+500;m.kx=m.ky=0;
-  const [mx,my]=footPx_(m.fx,m.fy),e=save.explore,z=m.stage;
+  const [mx,my]=footPx_(m.fx,m.fy),e=save.explore,z=m.stage,wasReady=gateReady_(z,e.kills[z],(e.armorKills||{})[z],QUEST_KILLS);
   canvasFx_("smoke",mx,my-8,0.45);
   setTimeout(()=>{if(X)X.mons=X.mons.filter(q=>q!==m)},500);
   const s=monsterStats(z),r=fieldReward_(s.gold,s.xp,!!m.night,rewardMul());
@@ -185,13 +187,14 @@ function killMon_(m,now){
   const ups=gainXp_(r.xp);
   if(ups.length){SFX.levelUp();spriteFx_("levelup",{scale:2.2,fps:20});toast(`⬆️ เลเวลอัป! Lv.${save.level} · ไปอัปทักษะได้ที่เมนู ☰`)}
   persist();updateExHud_();
-  killProgress_(z);
+  killProgress_(z,wasReady);
 }
 // ข้อความความคืบหน้าภารกิจทุ่ง (ไม่หยุดเกม ยกเว้นตอนครบ)
-function killProgress_(z){
-  const e=save.explore,k=e.kills[z];
-  if(k===QUEST_KILLS)exSay_([{mood:"happy",text:`ปราบ${zoneMonName_(z)}ครบ ${QUEST_KILLS} ตัวแล้ว! ตอนนี้ไปไขปริศนาเพื่อเปิดทางไป${nextZoneName_(z)}ได้เลย`}]);
-  else if(k<QUEST_KILLS)toast(`${ZONE_NAMES[z]}: ปราบแล้ว ${k}/${QUEST_KILLS}`);
+function killProgress_(z,wasReady){
+  const e=save.explore,k=e.kills[z],a=(e.armorKills||{})[z]||0,ready=gateReady_(z,k,a,QUEST_KILLS);
+  if(ready&&!wasReady){exSay_([{mood:"happy",text:`ภารกิจ${ZONE_NAMES[z]}ครบแล้ว! ตอนนี้ไปไขปริศนาเพื่อเปิดทางไป${nextZoneName_(z)}ได้เลย`}]);return}
+  if(ready)return;
+  toast(`${ZONE_NAMES[z]}: ปราบแล้ว ${Math.min(k,QUEST_KILLS)}/${QUEST_KILLS}`+(gateNeedsArmor_(z)?` · มอนเกราะ ${Math.min(a,1)}/1`:""));
 }
 function updateRespawns_(now){
   if(!X.respawns||!X.respawns.length)return;
@@ -286,4 +289,39 @@ function updateSkillButton_(now){
   const left=Math.max(0,(X.skillReadyAt||0)-now);
   b.style.setProperty("--cd",left>0?Math.min(1,left/(X.skillCdMs||left)).toFixed(3):"0");
   b.classList.toggle("disabled",left>0||!nearestMon_(SKILL_RANGE));
+}
+
+/* ====================================================================== */
+/* โจทย์จู่โจม ⚡ · พลังคณิต · โล่จากต้นไม้ทักษะ                                */
+/* ====================================================================== */
+const POWER_MS=15000;
+function enemyNear_(tiles){const [px,py]=footPx_(X.p.fx,X.p.fy);return X.mons.some(m=>{if(m.dead)return false;if(m.state==="chase")return true;const [mx,my]=footPx_(m.fx,m.fy);return Math.hypot(mx-px,my-py)<=tiles*TS})}
+function updateAmbush_(now){
+  if(!(X.m.zones&&X.m.zones.length))return;
+  if(X.nextAmbushAt==null){X.nextAmbushAt=now+nextAmbushDelay_(Math.random());return}
+  if(now<X.nextAmbushAt||X.busy||!enemyNear_(5))return;
+  X.nextAmbushAt=Infinity;ambush_();
+}
+async function ambush_(){
+  const z=(X.m.zones||[]).find(z=>inZone_(z,X.p.x,X.p.y))||(nearestMon_(8)||{}).zone;
+  if(!z){X.nextAmbushAt=performance.now()+10000;return}
+  const q=makeQuestion({id:z.stage},1+Math.floor(Math.random()*3));
+  const res=await askTimed_({title:"⚡ โจทย์จู่โจม!",text:q.text,answer:q.answer,options:q.options,seconds:10+bonusTime(),portrait:`<img class="pixelated" src="${mascotSrc("excited")}" alt="">`});
+  if(!X)return;
+  const now=performance.now(),e=save.explore,[px,py]=footPx_(X.p.fx,X.p.fy);
+  X.nextAmbushAt=now+nextAmbushDelay_(Math.random());
+  if(!res.ok){save.stats.wrong++;persist();return}
+  save.stats.correct++;
+  const r=pickAmbushReward_(Math.random());
+  if(r==="heal"){const max=effMaxHp(),h=Math.round(max*0.2);e.hp=Math.min(max,e.hp+h);canvasFx_("heal",px,py-10,0.6);floatText2_("+"+h+" HP",px,py-34,"#86efac",now);toast(`⚡ ตอบถูก! ฟื้น HP +${h}`)}
+  else if(r==="power"){X.powerUntil=now+POWER_MS;canvasFx_("crit",px,py-10,0.5);toast("⚡ ตอบถูก! พลังคณิต: ดาบแรง ×2 นาน 15 วินาที")}
+  else{const g=10+Math.floor(Math.random()*11);save.gold+=g;SFX.coin&&SFX.coin();toast(`⚡ ตอบถูก! ได้ 🪙 ${g}`)}
+  updateExHud_();persist();
+}
+// ชิปนับถอยหลัง "พลังคณิต" ใน HUD
+function updatePowerChip_(now){
+  let chip=$("ex-power");const left=(X.powerUntil||0)-now;
+  if(left<=0){if(chip)chip.classList.add("hidden");return}
+  if(!chip){chip=document.createElement("span");chip.id="ex-power";chip.className="chip ex-power";document.querySelector(".ex-right").prepend(chip)}
+  chip.classList.remove("hidden");chip.textContent=`⚡ พลังคณิต ${Math.ceil(left/1000)}s`;
 }

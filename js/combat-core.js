@@ -100,3 +100,7 @@ function coinSplit_(gold){const out=[];let g=Math.max(0,Math.round(gold));while(
 
 /* ---- คำตอบเป็นตัวเลขล้วน → ใช้แป้นตัวเลข · ไม่ใช่ (เศษส่วน/ข้อความ) → ใช้ปุ่มตัวเลือก ---- */
 function isNumericAnswer_(a){return /^-?\d+(\.\d+)?$/.test(String(a).trim())}
+
+/* ---- ภารกิจเปิดประตูทุ่ง: ปราบครบ + (ทุ่ง B–E) ต้องมีมอนเกราะอย่างน้อย 1 ตัว ---- */
+function gateNeedsArmor_(stage){return "BCDE".includes(stage)}
+function gateReady_(stage,kills,armorKills,questKills){return (kills||0)>=questKills&&(!gateNeedsArmor_(stage)||(armorKills||0)>=1)}

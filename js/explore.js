@@ -167,7 +167,7 @@ function paintForest_(c){
     c.drawImage(mapleCrop_(src[0],src[1],src[2],src[3],hash2_(x,y,57)<0.5),dx,dy)});
 }
 function drawStoneGate_(c,gx,y0,y1,gid,camX,camY,now,anim){
-  const e=save.explore,zone=(EXPLORE_MAPS.field.zones||[]).find(z=>z.gate===gid),ready=zone&&(e.kills[zone.stage]||0)>=QUEST_KILLS&&gid!=="gC"||gid==="gC"&&e.key;
+  const e=save.explore,zone=(EXPLORE_MAPS.field.zones||[]).find(z=>z.gate===gid),ready=zone&&gateReady_(zone.stage,e.kills[zone.stage],(e.armorKills||{})[zone.stage],QUEST_KILLS)&&gid!=="gC"||gid==="gC"&&e.key;
   const k=anim?Math.min(1,(now-anim.t0)/1100):0,sink=Math.round(k*k*30);
   const x=gx*TS-camX,top=y0*TS-12-camY,H=(y1-y0+1)*TS+12,bottom=(y1+1)*TS-camY;
   const R=(X2,Y2,W,H2,col)=>{c.fillStyle=col;c.fillRect(Math.round(X2),Math.round(Y2),W,H2)};
@@ -568,8 +568,9 @@ function objective_(){
   if(!e.talkedFlag)return "คุยกับครูแฟล็กที่ลานน้ำพุกลางหมู่บ้าน";
   for(const z of EXPLORE_MAPS.field.zones){
     if(e.open[z.gate])continue;
-    const k=e.kills[z.stage];
-    if(k<QUEST_KILLS)return `${ZONE_NAMES[z.id]}: ปราบ${zoneMonName_(z.stage)} ${k}/${QUEST_KILLS}`;
+    const k=e.kills[z.stage],a=(e.armorKills||{})[z.stage]||0;
+    if(k<QUEST_KILLS)return `${ZONE_NAMES[z.id]}: ปราบ${zoneMonName_(z.stage)} ${k}/${QUEST_KILLS}`+(gateNeedsArmor_(z.stage)?` · มอนเกราะ ${Math.min(a,1)}/1`:"");
+    if(!gateReady_(z.stage,k,a,QUEST_KILLS))return `${ZONE_NAMES[z.id]}: ปราบมอนเกราะ 0/1 (ใช้สกิล ✨ ทำลายเกราะก่อน)`;
     return {gA:"ไขประตูหิน — หาเลขบนแผ่นหิน 3 แผ่นในทุ่งบวกแล้วบวกกัน",bridge:"ซ่อมสะพาน — คุยกับลุงช่างไม้ริมแม่น้ำ",
             gC:e.key?"ใช้กุญแจเปิดประตูทางตะวันออกของทุ่งคูณ":"เปิดหีบรหัสในทุ่งคูณ (ถามลุงชาวสวน)",gD:"ไขประตูแบ่งเหรียญทางตะวันออกของทุ่งหาร",
             gE:"ไขรหัสประตูลานบอส — ดูห้องหินโบราณในทุ่งผสม"}[z.gate];
@@ -584,14 +585,21 @@ function openExMenu(){
   $("ex-menu-body").innerHTML=`
     <p class="pixel-label">MENU</p>
     <div class="ex-menu-quest"><b>ภารกิจตอนนี้</b><p>📜 ${esc(objective_())}</p>
-      <small>${"ABCDE".split("").map(z=>`${ZONE_NAMES[z]} ${e.open[EXPLORE_MAPS.field.zones.find(q=>q.id===z).gate]?"✅":`${Math.min(e.kills[z],QUEST_KILLS)}/${QUEST_KILLS}`}`).join(" · ")}</small></div>
+      <small>${"ABCDE".split("").map(z=>`${ZONE_NAMES[z]} ${e.open[EXPLORE_MAPS.field.zones.find(q=>q.id===z).gate]?"✅":`${Math.min(e.kills[z],QUEST_KILLS)}/${QUEST_KILLS}${gateNeedsArmor_(z)?` 🛡️${Math.min((e.armorKills||{})[z]||0,1)}/1`:""}`}`).join(" · ")}</small></div>
     <div class="ex-menu-items">${ITEM_ORDER.map(k=>`<span class="chip">${ITEMS[k].icon} ${save.items[k]||0}</span>`).join("")}${e.key?`<span class="chip">🗝️ กุญแจ</span>`:""}</div>
+    ${(save.items.potion||0)>0&&e.hp<effMaxHp()?`<button type="button" class="btn btn-lime btn-block" onclick="usePotionOnMap_()">🧪 ใช้ยาฟื้นพลัง (เหลือ ${save.items.potion}) · HP ${e.hp}/${effMaxHp()}</button>`:""}
     <div class="ex-menu-row"><button type="button" class="btn btn-ghost" onclick="openDaily_()">📜 ภารกิจรายวัน</button><button type="button" class="btn btn-ghost" onclick="openBook_()">📖 สมุดมอนสเตอร์</button></div>
     <button type="button" class="btn btn-lime btn-block" onclick="closeExMenu();stopExplore_();openSkills('explore')">🌳 ต้นไม้ทักษะ${pts?` (มีแต้ม ${pts})`:""}</button>
     <button type="button" class="btn btn-ghost btn-block" onclick="closeExMenu();stopExplore_();openHero('explore')">🧙 ตัวละคร</button>
     <button type="button" class="btn btn-ghost btn-block" onclick="exitExploreToMap()">🗺️ ออกไปแผนที่โลก</button>
     <button type="button" class="btn btn-gold btn-block" onclick="closeExMenu()">▶ เล่นต่อ</button>`;
   $("ex-menu").classList.remove("hidden");
+}
+// ยาฟื้นพลังบนแผนที่: +40% ของ HP สูงสุด (เหมือนในฉากต่อสู้)
+function usePotionOnMap_(){
+  const e=save.explore,max=effMaxHp();if(!(save.items.potion>0)||e.hp>=max)return;
+  const h=Math.round(max*0.4);e.hp=Math.min(max,e.hp+h);save.items.potion--;persist();SFX.heal();
+  toast(`🧪 ฟื้นพลัง +${h} HP`);updateExHud_();openExMenu();
 }
 function closeExMenu(){$("ex-menu").classList.add("hidden");if(X)X.busy=false}
 
@@ -765,6 +773,9 @@ async function tryGate_(gid){
   if(e.open[gid])return;
   const zone=EXPLORE_MAPS.field.zones.find(z=>z.gate===gid),k=e.kills[zone.stage],P=e.puz;
   const carpenter=X.npcs.find(n=>n.id==="carpenter");
+  const ak=(e.armorKills||{})[zone.stage]||0;
+  if(k>=QUEST_KILLS&&!gateReady_(zone.stage,k,ak,QUEST_KILLS))
+    return exSay_([{mood:"remind",text:`เกือบแล้ว! ต้องปราบมอนเกราะใน${ZONE_NAMES[zone.id]}อย่างน้อย 1 ตัวด้วย — ฟันไม่เข้าใช่ไหม? กดสกิล ✨ แล้วตอบโจทย์ให้ถูกเพื่อทำลายเกราะ`}]);
   if(k<QUEST_KILLS){
     const who=gid==="bridge"&&carpenter?say(carpenter,`ปีศาจลบขโมยไม้ไปหมดเลย! ช่วยปราบ${zoneMonName_(zone.stage)}ให้ได้ ${QUEST_KILLS} ตัวก่อน (ตอนนี้ ${k}/${QUEST_KILLS})`)
       :{mood:"remind",text:`ประตูนี้ถูกผนึกไว้ ต้องปราบ${zoneMonName_(zone.stage)}ใน${ZONE_NAMES[zone.id]}ให้ครบ ${QUEST_KILLS} ตัวก่อน (ตอนนี้ ${k}/${QUEST_KILLS})`};

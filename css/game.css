@@ -541,3 +541,4 @@ img.ico{width:1.3em;height:1.3em;vertical-align:-.3em;image-rendering:pixelated;
 .pz-timer span.low{background:#ef4444}
 .pz-keys.choices{grid-template-columns:repeat(2,1fr)}
 .pz-keys.choices button{font-size:1rem;padding:12px 6px}
+.ex-power{background:rgba(124,58,237,.75);border-color:#c4b5fd;color:#fff;animation:bob 1.2s ease-in-out infinite}
