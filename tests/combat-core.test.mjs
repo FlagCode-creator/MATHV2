@@ -85,3 +85,7 @@ test("coinSplit_ splits gold into coins of at most 5", () => {
   assert.deepEqual([...c.coinSplit_(3)], [3]);
   assert.deepEqual([...c.coinSplit_(0)], []);
 });
+
+test("isNumericAnswer_ decides number pad vs choice buttons", () => {
+  assert.deepEqual(["14", "-3", "2.5", "1/2", "x", 7].map(c.isNumericAnswer_), [true, true, true, false, false, true]);
+});

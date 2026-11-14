@@ -506,6 +506,7 @@ function bindExploreControls_(){
   const ea=$("ex-a"),release=()=>{if(X)X.attackHeld=false};
   ea.addEventListener("pointerdown",ev=>{ev.preventDefault();if(!X||X.busy)return;if(interact_())return;X.attackHeld=true;swing_(performance.now())});
   ["pointerup","pointercancel","pointerleave"].forEach(t=>ea.addEventListener(t,release));
+  $("ex-skill").addEventListener("pointerdown",ev=>{ev.preventDefault();useSkill_()});
   const keyDir={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right",w:"up",s:"down",a:"left",d:"right",W:"up",S:"down",A:"left",D:"right"};
   document.addEventListener("keydown",ev=>{
     if(!X||!$("screen-explore").classList.contains("active"))return;
@@ -514,6 +515,7 @@ function bindExploreControls_(){
     if(keyDir[ev.key]){ev.preventDefault();EX_KEYS.add(keyDir[ev.key])}
     else if(ev.key===" "||ev.key==="j"||ev.key==="J"){ev.preventDefault();if(ev.repeat||X.busy)return;if(interact_())return;X.attackHeld=true;swing_(performance.now())}
     else if(ev.key==="Enter"||ev.key==="z"||ev.key==="Z"){ev.preventDefault();interact_()}
+    else if(ev.key==="k"||ev.key==="K"||ev.key==="x"||ev.key==="X"){ev.preventDefault();if(!ev.repeat)useSkill_()}
   });
   document.addEventListener("keyup",ev=>{if(keyDir[ev.key])EX_KEYS.delete(keyDir[ev.key]);if((ev.key===" "||ev.key==="j"||ev.key==="J")&&X)X.attackHeld=false});
   window.addEventListener("blur",()=>{EX_KEYS.clear();if(X)X.attackHeld=false});
@@ -607,7 +609,7 @@ function askNumber({title,text,answer,hint,portrait}){
     $("pz-title").textContent=title;
     $("pz-text").textContent=text;
     $("pz-portrait").innerHTML=portrait||`<img class="pixelated" src="${mascotSrc("thinking")}" alt="">`;
-    $("pz-hint").classList.add("hidden");$("pz-hint").textContent="";
+    $("pz-hint").classList.add("hidden");$("pz-hint").textContent="";if($("pz-timer"))$("pz-timer").classList.add("hidden");
     const show=()=>{$("pz-input").textContent=val||"?"};show();
     const keys=["7","8","9","4","5","6","1","2","3","−","0","⌫"];
     $("pz-keys").innerHTML="";
@@ -631,6 +633,54 @@ function askNumber({title,text,answer,hint,portrait}){
   });
 }
 
+// โจทย์จับเวลา (สกิลคิดเลข / โจทย์จู่โจม): ตอบได้ครั้งเดียว · หมดเวลา/ข้าม = ผิด · ผิดแล้วโชว์เฉลย 2 วิ
+// คำตอบเป็นตัวเลข → แป้นตัวเลข · ไม่ใช่ → ปุ่มตัวเลือกจาก options · คืน {ok, timedOut}
+function askTimed_({title,text,answer,options,seconds,portrait}){
+  return new Promise(res=>{
+    if(X){X.busy=true;X.held=null;X.attackHeld=false}
+    const numeric=isNumericAnswer_(answer),card=$("pz-card");
+    let val="",done=false,timer=null;
+    let bar=$("pz-timer");if(!bar){bar=document.createElement("div");bar.id="pz-timer";bar.className="pz-timer";bar.innerHTML="<span></span>";$("pz-text").after(bar)}
+    bar.classList.remove("hidden");
+    $("pz-title").textContent=title;$("pz-text").textContent=text;
+    $("pz-portrait").innerHTML=portrait||`<img class="pixelated" src="${mascotSrc("thinking")}" alt="">`;
+    $("pz-hint").classList.add("hidden");$("pz-hint").textContent="";
+    $("pz-input").classList.toggle("hidden",!numeric);
+    const show=()=>{$("pz-input").textContent=val||"?"};show();
+    const keys=$("pz-keys");keys.innerHTML="";keys.classList.toggle("choices",!numeric);
+    const finish=(ok,timedOut)=>{
+      if(done)return;done=true;clearInterval(timer);
+      keys.querySelectorAll("button").forEach(b=>b.disabled=true);$("pz-ok").disabled=$("pz-cancel").disabled=true;
+      const close=()=>{$("puzzle-modal").classList.add("hidden");bar.classList.add("hidden");$("pz-input").classList.remove("hidden");keys.classList.remove("choices");
+        $("pz-ok").disabled=$("pz-cancel").disabled=false;$("pz-ok").classList.remove("hidden");$("pz-ok").textContent="✓ ยืนยัน";$("pz-cancel").textContent="ไว้ก่อน";
+        if(X)X.busy=false;res({ok,timedOut})};
+      if(ok){SFX.win();setTimeout(close,250);return}
+      SFX.hurt();card.classList.remove("shake");void card.offsetWidth;card.classList.add("shake");
+      $("pz-hint").textContent=(timedOut?"⏰ หมดเวลา! ":"")+"คำตอบคือ "+answer;$("pz-hint").classList.remove("hidden");
+      setTimeout(close,2000);
+    };
+    if(numeric){
+      ["7","8","9","4","5","6","1","2","3","−","0","⌫"].forEach(k=>{
+        const b=document.createElement("button");b.type="button";b.textContent=k;
+        b.addEventListener("pointerdown",ev=>{ev.preventDefault();if(done)return;SFX.click();
+          if(k==="⌫")val=val.slice(0,-1);else if(k==="−")val=val.startsWith("-")?val.slice(1):"-"+val;else if(val.length<7)val+=k;show()});
+        keys.appendChild(b);
+      });
+      $("pz-ok").onclick=()=>{if(done||!val||val==="-")return;finish(Number(val)===Number(answer),false)};
+      $("pz-ok").classList.remove("hidden");
+    }else{
+      (options||[answer]).forEach(o=>{const b=document.createElement("button");b.type="button";b.textContent=o;
+        b.addEventListener("pointerdown",ev=>{ev.preventDefault();if(done)return;SFX.click();finish(String(o)===String(answer),false)});keys.appendChild(b)});
+      $("pz-ok").classList.add("hidden");
+    }
+    $("pz-ok").textContent="✓ ตอบ";$("pz-cancel").textContent="ข้าม";
+    $("pz-cancel").onclick=()=>{SFX.click();finish(false,false)};
+    const t0=performance.now(),ms=seconds*1000,fill=bar.firstElementChild;
+    const tick=()=>{const left=Math.max(0,ms-(performance.now()-t0));fill.style.width=(left/ms*100)+"%";fill.classList.toggle("low",left<3000);if(left<=0)finish(false,true)};
+    tick();timer=setInterval(tick,100);
+    $("puzzle-modal").classList.remove("hidden");
+  });
+}
 // คุย/ตรวจสอบ: ช่องข้างหน้าเท้า (ถ้าไม่มีอะไร ลองช่องที่ยืนอยู่) · คืน true ถ้ามีอะไรให้ทำ
 const NO_HIT={};
 function interact_(){

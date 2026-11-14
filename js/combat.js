@@ -23,6 +23,7 @@ function updateCombat_(now,dt){
   if(!X)return;
   updateNightMons_(now);
   X.mons.forEach((m,i)=>{if(m.tier==null)initMon_(m,i)});
+  updateSkillButton_(now);
   if(X.busy)return;
   const sec=Math.min(dt||16,50)/1000,[ppx,ppy]=footPx_(X.p.fx,X.p.fy);
   X.mons.forEach(m=>{if(!m.dead)updateMon_(m,now,sec,ppx,ppy)});
@@ -246,4 +247,43 @@ function drawCombatMarks_(c,camX,camY,now){
   }
   (X.coins||[]).forEach(cn=>{const x=Math.round(cn.wx-camX),y=Math.round(cn.wy-camY);
     c.fillStyle="#7a4a10";c.fillRect(x-2,y-2,5,5);c.fillStyle="#feae34";c.fillRect(x-2,y-1,5,3);c.fillRect(x-1,y-2,3,5);c.fillStyle="#fee761";c.fillRect(x-1,y-1,1,2)});
+}
+
+/* ====================================================================== */
+/* สกิลคิดเลข ✨: ตอบถูก = ท่าไม้ตาย 5 เท่า + ทำลายเกราะ 1 ชั้น (วงรอบตัว 3 ช่อง)   */
+/* ====================================================================== */
+const SKILL_RANGE=4,SKILL_BLAST=3,SKILL_CD_OK=2000,SKILL_CD_BAD=5000;
+function nearestMon_(rangeTiles){
+  const [px,py]=footPx_(X.p.fx,X.p.fy);let best=null,bd=rangeTiles*TS;
+  X.mons.forEach(m=>{if(m.dead)return;const [mx,my]=footPx_(m.fx,m.fy),d=Math.hypot(mx-px,my-py);if(d<=bd){bd=d;best=m}});
+  return best;
+}
+async function useSkill_(){
+  if(!X||X.busy)return;
+  const now=performance.now();if(now<(X.skillReadyAt||0))return;
+  const target=nearestMon_(SKILL_RANGE);
+  if(!target){toast("✨ ไม่มีมอนสเตอร์อยู่ใกล้ ๆ");return}
+  const stage=target.stage,sub=questionSubFor_(target.tier,save.explore.kills[stage]||0),q=makeQuestion({id:stage},sub);
+  const res=await askTimed_({title:"✨ สกิลคิดเลข",text:q.text,answer:q.answer,options:q.options,seconds:15+bonusTime(),portrait:heroImg(save.avatar,72)});
+  if(!X)return;
+  const t=performance.now();
+  if(res.ok){save.stats.correct++;skillBlast_(t)}
+  else{save.stats.wrong++;X.skillStreak=0;X.skillReadyAt=t+SKILL_CD_BAD;X.skillCdMs=SKILL_CD_BAD}
+  persist();
+}
+function skillBlast_(now){
+  const [px,py]=footPx_(X.p.fx,X.p.fy),dmg=skillDmg_(effAtk(),X.skillStreak||0);
+  X.skillStreak=(X.skillStreak||0)+1;X.skillReadyAt=now+SKILL_CD_OK;X.skillCdMs=SKILL_CD_OK;
+  canvasFx_(HERO_FX[heroKey(save.avatar)]||"slash",px,py-8,0.9);canvasFx_("crit",px,py-8,0.55);
+  (SFX.crit||SFX.hit)();
+  floatText2_(X.skillStreak>1?`✨ คอมโบสกิล ×${X.skillStreak}`:"✨ สกิลคิดเลข!",px,py-40,"#c4b5fd",now);
+  X.mons.slice().forEach(m=>{if(m.dead)return;const [mx,my]=footPx_(m.fx,m.fy);if(Math.hypot(mx-px,my-py)<=SKILL_BLAST*TS)hitMon_(m,dmg,X.p.fx,X.p.fy,now,true)});
+}
+// ปุ่ม ✨: วงคูลดาวน์ · จางเมื่อไม่มีเป้าหมาย · ซ่อนเมื่อไม่ได้อยู่ในทุ่ง
+function updateSkillButton_(now){
+  const b=$("ex-skill");if(!b||!X)return;
+  const field=!!(X.m.zones&&X.m.zones.length);b.classList.toggle("hidden",!field);if(!field)return;
+  const left=Math.max(0,(X.skillReadyAt||0)-now);
+  b.style.setProperty("--cd",left>0?Math.min(1,left/(X.skillCdMs||left)).toFixed(3):"0");
+  b.classList.toggle("disabled",left>0||!nearestMon_(SKILL_RANGE));
 }

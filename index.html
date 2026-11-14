@@ -14,7 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
 <!-- ?v= คือเลขเวอร์ชันไฟล์: service worker ของเว็บหลักแคชไฟล์ .css/.js แบบ cache-first
      แก้ไฟล์ไหนแล้วให้เพิ่มเลข ?v= ของไฟล์นั้น ผู้เล่นจะได้โหลดไฟล์ใหม่ทันที -->
-<link rel="stylesheet" href="css/game.css?v=24">
+<link rel="stylesheet" href="css/game.css?v=25">
 </head>
 <body>
 <div id="app" class="assets-loading">
@@ -237,7 +237,8 @@
    <div id="ex-stick-zone" class="ex-stick-zone" aria-label="จอยสติ๊กสำหรับเดิน">
     <div id="ex-stick" class="ex-stick"><div id="ex-knob" class="ex-knob"></div></div>
    </div>
-   <button id="ex-a" type="button" class="ex-a" aria-label="คุย/ตรวจสอบ">A</button>
+   <button id="ex-a" type="button" class="ex-a" aria-label="คุย/ตรวจสอบ/ฟัน">A</button>
+   <button id="ex-skill" type="button" class="ex-skill hidden" aria-label="สกิลคิดเลข">✨<span class="cd"></span></button>
    <div id="ex-rotate" class="ex-rotate hidden"><span>📱↻ หมุนจอเป็นแนวนอน จะเห็นแผนที่กว้างขึ้น</span><button type="button" onclick="dismissRotateHint()">×</button></div>
   </div>
  </section>
@@ -299,9 +300,9 @@
 <script src="js/icons.js?v=1"></script>
 <script src="js/skills.js?v=1"></script>
 <script src="js/explore-data.js?v=12"></script>
-<script src="js/explore.js?v=38"></script>
-<script src="js/combat-core.js?v=3"></script>
-<script src="js/combat.js?v=4"></script>
+<script src="js/explore.js?v=39"></script>
+<script src="js/combat-core.js?v=4"></script>
+<script src="js/combat.js?v=5"></script>
 <script src="js/ambient.js?v=5"></script>
 <script src="js/critters.js?v=12"></script>
 <script src="js/interiors.js?v=2"></script>

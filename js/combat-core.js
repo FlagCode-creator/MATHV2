@@ -97,3 +97,6 @@ function canBeHit_(now,invulnUntil){return now>invulnUntil}
 
 /* ---- เหรียญดรอป: เหรียญละไม่เกิน 5 ---- */
 function coinSplit_(gold){const out=[];let g=Math.max(0,Math.round(gold));while(g>0){const v=Math.min(5,g);out.push(v);g-=v}return out}
+
+/* ---- คำตอบเป็นตัวเลขล้วน → ใช้แป้นตัวเลข · ไม่ใช่ (เศษส่วน/ข้อความ) → ใช้ปุ่มตัวเลือก ---- */
+function isNumericAnswer_(a){return /^-?\d+(\.\d+)?$/.test(String(a).trim())}

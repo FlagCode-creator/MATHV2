@@ -529,3 +529,15 @@ img.ico{width:1.3em;height:1.3em;vertical-align:-.3em;image-rendering:pixelated;
 /* ภาพเอฟเฟกต์เคลื่อนไหว (spriteFx_ ใน js/fx.js) */
 .fx-sprite{position:absolute;pointer-events:none;background-repeat:no-repeat;image-rendering:pixelated;image-rendering:crisp-edges;z-index:5}
 .fx-sprite.fixed{position:fixed;z-index:9999}
+/* ปุ่มสกิลคิดเลข ✨ (ซ้ายบนของปุ่ม A) + วงคูลดาวน์ */
+.ex-skill{position:absolute;right:112px;bottom:calc(84px + env(safe-area-inset-bottom));width:62px;height:62px;border-radius:50%;border:3px solid rgba(196,181,253,.7);background:rgba(76,29,149,.6);color:#fff;font-size:1.5rem;touch-action:none;box-shadow:0 3px 0 rgba(0,0,0,.4);overflow:hidden}
+.ex-skill:active{background:rgba(124,58,237,.85)}
+.ex-skill .cd{position:absolute;inset:0;border-radius:50%;pointer-events:none;background:conic-gradient(rgba(0,0,0,.6) calc(var(--cd,0)*360deg),transparent 0)}
+.ex-skill.disabled{opacity:.5}
+.ex-wrap.landscape .ex-skill{right:calc(26px + min(80px,20vh) + 12px + env(safe-area-inset-right));bottom:calc(30px + min(80px,20vh)*0.55 + env(safe-area-inset-bottom));width:min(62px,16vh);height:min(62px,16vh)}
+/* แถบเวลาของโจทย์จับเวลา + ปุ่มตัวเลือก */
+.pz-timer{height:8px;background:#0e1433;border:2px solid var(--line);border-radius:6px;overflow:hidden;margin:0 0 8px}
+.pz-timer span{display:block;height:100%;background:linear-gradient(90deg,#a3e635,#fde047);transition:width .1s linear}
+.pz-timer span.low{background:#ef4444}
+.pz-keys.choices{grid-template-columns:repeat(2,1fr)}
+.pz-keys.choices button{font-size:1rem;padding:12px 6px}
