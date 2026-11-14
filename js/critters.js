@@ -96,16 +96,20 @@ const NIGHT_STATE={day:-1,gone:{}};   // ปีศาจที่ถูกปร
 function tinyImg_(kind,anim){return packImg_(kind+"_"+anim)}
 // วาดบนแผนที่ (ขนาดจริง 1:1)
 function drawTinyMon_(c,m,camX,camY,now){
-  const kind=m.night||m.tiny,anim=m.t<1?"walk":"idle",img=tinyTinted_(kind,anim,m.hue||0);if(!img.width&&!img.naturalWidth)return;
-  const n=NIGHT_MON[kind].frames[anim],f=Math.floor(now/(anim==="walk"?90:140)+(m.x||0))%n;
-  const x=Math.round(m.fx*TS+8-camX),y=Math.round(m.fy*TS+TS-camY);
-  c.fillStyle="rgba(0,0,0,.3)";c.beginPath();c.ellipse(x,y-1,7,2.2,0,0,Math.PI*2);c.fill();
+  const kind=m.night||m.tiny,F=NIGHT_MON[kind].frames;
+  const anim=m.anim&&F[m.anim]?m.anim:(m.t<1?"walk":"idle"),img=tinyTinted_(kind,anim,m.hue||0);if(!img.width&&!img.naturalWidth)return;
+  const n=F[anim],oneShot=anim==="hurt"||anim==="death"||anim==="attack01";
+  const f=oneShot?Math.min(n-1,Math.floor((now-(m.animAt||now))/100)):Math.floor(now/(anim==="walk"?90:140)+(m.x||0))%n;
+  const x=Math.round(m.fx*TS+8-camX),y=Math.round(m.fy*TS+TS-camY),s=m.tier===3?1.3:1;   // ชั้น 3 (ตัวใหญ่) วาดใหญ่ขึ้น
+  c.fillStyle="rgba(0,0,0,.3)";c.beginPath();c.ellipse(x,y-1,7*s,2.2*s,0,0,Math.PI*2);c.fill();
   // ปีศาจกลางคืน: แสงแดงเรือง ๆ ให้เห็นในความมืด
   if(m.night){c.globalCompositeOperation="lighter";const g=c.createRadialGradient(x,y-10,0,x,y-10,16);g.addColorStop(0,"rgba(255,60,60,.28)");g.addColorStop(1,"rgba(255,60,60,0)");c.fillStyle=g;c.fillRect(x-16,y-26,32,32);c.globalCompositeOperation="source-over"}
-  c.save();c.translate(x,y);if(m.flip)c.scale(-1,1);c.imageSmoothingEnabled=false;
-  c.drawImage(img,f*100,0,100,100,-TINY_CX,-TINY_FOOT-1,100,100);c.restore();
+  c.save();c.translate(x,y);c.scale(m.flip?-s:s,s);c.imageSmoothingEnabled=false;
+  c.drawImage(img,f*100,0,100,100,-TINY_CX,-TINY_FOOT-1,100,100);
+  if(m.flashUntil>now){c.globalCompositeOperation="lighter";c.globalAlpha=0.7;c.drawImage(img,f*100,0,100,100,-TINY_CX,-TINY_FOOT-1,100,100)}   // โดนตี → กะพริบขาว
+  c.restore();
 }
-// เกิด/หายตามช่วงเวลา (เรียกทุกเฟรมจาก updateMonsters_)
+// เกิด/หายตามช่วงเวลา (เรียกทุกเฟรมจาก updateCombat_ ใน js/combat.js)
 function updateNightMons_(now){
   if(!X||X.mapId!=="field"||!X.m.zones)return;
   const {dark}=dayLight_(dayPhase_(now)),night=dark>=0.3,has=X.mons.some(m=>m.night),day=dayIndex_(now);

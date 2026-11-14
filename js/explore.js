@@ -3,7 +3,6 @@
 
 const TS=16;                 // ขนาดช่อง (พิกเซล)
 const STEP_MS=150;           // เวลาเดิน 1 ช่อง
-const MON_STEP_MS=320;
 let X=null;                  // สถานะขณะเล่นโหมดผจญภัย
 
 /* ====================================================================== */
@@ -219,7 +218,7 @@ function exLoop_(now){
   try{
     if(!X.base||!X.base[X.frame])buildBase_();          // พื้นแผนที่ยังไม่ได้วาด (โหลดพลาดก่อนหน้า) → วาดใหม่
     updatePlayer_(now,dt);
-    updateMonsters_(now);
+    updateCombat_(now,dt);
     updateNpcs_(now);
     if(typeof updateEmotes_==="function")updateEmotes_(now);
     drawExplore_(now);
@@ -257,8 +256,7 @@ function updatePlayer_(now,dt){
     tryDoorPush_(now,mv,oy);
   }else X.doorPush=0;
   const [tx,ty]=footTile_(p.fx,p.fy);
-  if(tx!==p.x||ty!==p.y){p.x=tx;p.y=ty;p.step++;playerTileChanged_();if(!X)return}
-  touchEnemies_(now);
+  if(tx!==p.x||ty!==p.y){p.x=tx;p.y=ty;p.step++;playerTileChanged_()}
 }
 // ดันขึ้นชนประตูบ้านต่อเนื่อง 150 ms = เข้าบ้าน (เหมือนเดินชนประตูแบบเดิม)
 function tryDoorPush_(now,mv,oy){
@@ -267,15 +265,6 @@ function tryDoorPush_(now,mv,oy){
   const [tx,ty]=facingTile_(p.fx,p.fy,"up"),door=(X.m.doors||[]).find(d=>d.x===tx&&d.y===ty&&d.inside);
   if(!door){X.doorPush=0;return}
   if(!X.doorPush)X.doorPush=now;else if(now-X.doorPush>=150){X.doorPush=0;enterDoor_(door)}
-}
-// ชนมอน/บอส (ชั่วคราว: ยังเข้าฉากต่อสู้แบบเดิม — ระบบต่อสู้บนแผนที่มาแทนในขั้นถัดไป)
-function touchEnemies_(now){
-  if(X.busy||now<=X.invulnUntil)return;
-  const [px,py]=footPx_(X.p.fx,X.p.fy);
-  const mon=X.mons.find(m=>{const [mx,my]=footPx_(m.fx,m.fy);return boxesOverlap_(px,py,FOOT_W,FOOT_H,mx,my,MON_W,MON_H)});
-  if(mon){startFieldBattle_(mon);return}
-  const b=X.m.boss;
-  if(b&&!save.explore.bossDone){const [bx,by]=footPx_(b.x,b.y);if(boxesOverlap_(px,py,FOOT_W,FOOT_H,bx,by,16,12))startBossBattle_()}
 }
 function playerTileChanged_(){
   const p=X.p,e=save.explore;
@@ -313,21 +302,6 @@ function updateNpcs_(now){
     n.sx=n.x;n.sy=n.y;n.x=nx;n.y=ny;n.t0=now;n.t=0;n.step++;dust_(n.sx*TS+8,n.sy*TS+TS,1);
   });
 }
-function updateMonsters_(now){
-  updateNightMons_(now);
-  X.mons.forEach(m=>{
-    if(m.t<1){m.t=Math.min(1,(now-m.t0)/MON_STEP_MS);m.fx=m.sx+(m.x-m.sx)*m.t;m.fy=m.sy+(m.y-m.sy)*m.t;
-      if(m.t>=1&&!m.night&&!m.tiny&&monStyle_(MONSTERS[m.stage].sprite)==="hop")dust_(m.x*TS+8,m.y*TS+TS,3);return}
-    if(X.busy||now<m.next)return;
-    m.next=now+rng(500,1300);
-    if(Math.random()<0.25){if(Math.random()<0.6)m.flip=!m.flip;return}   // หยุดมองซ้าย-ขวา
-    const dir=pickOne(Object.keys(DIRS)),[dx,dy]=DIRS[dir],nx=m.x+dx,ny=m.y+dy;
-    if(!inZone_(m.zone,nx,ny)||blocked_(nx,ny)||npcAt_(nx,ny)||monAt_(nx,ny))return;
-    if(playerOccupies_(nx,ny)){if(now>X.invulnUntil&&!X.busy)startFieldBattle_(m);return}
-    m.sx=m.x;m.sy=m.y;m.x=nx;m.y=ny;m.t0=now;m.t=0;m.flip=dx<0?true:dx>0?false:m.flip;
-  });
-}
-
 function drawExplore_(now){
   const c=X.ctx,cv=X.canvas,p=X.p,P=X.px||2;
   c.setTransform(1,0,0,1,0,0);c.imageSmoothingEnabled=false;
@@ -399,12 +373,14 @@ function drawExplore_(now){
     if(art){drawArt_(c,art,Math.min(BOSS_ART_H,BOSS_ART_W*art.h/art.w),b.x*TS+8-camX,b.y*TS+TS-camY,X.bossEnt||(X.bossEnt={x:b.x,y:b.y,t:1}),false,now,monStyle_(b.sprite));return}
     const cv2=spriteCanvas(b.sprite);c.drawImage(cv2,Math.round(b.x*TS+8-cv2.width/2-camX),Math.round(b.y*TS+TS-cv2.height-camY+(Math.floor(now/400)%2)))}});
   const moving=p.moving;
-  ents.push({y:p.fy,draw:()=>{if(!drawHeroSprite_(c,p.dir,p.fx,p.fy,camX,camY,p,now))drawChar_(c,"hero:"+heroKey(save.avatar),p.dir,moving?(p.step%2?1:2):0,p.fx,p.fy,camX,camY,p,now);grassOver_(c,p.fx,p.fy,camX,camY,now)}});
+  const blink=now<X.invulnUntil&&X.hurtAt&&now-X.hurtAt<1000&&Math.floor(now/80)%2;   // เพิ่งโดนตี → กะพริบ
+  ents.push({y:p.fy,draw:()=>{if(blink)c.globalAlpha=0.35;if(!drawHeroSprite_(c,p.dir,p.fx,p.fy,camX,camY,p,now))drawChar_(c,"hero:"+heroKey(save.avatar),p.dir,moving?(p.step%2?1:2):0,p.fx,p.fy,camX,camY,p,now);c.globalAlpha=1;grassOver_(c,p.fx,p.fy,camX,camY,now)}});
   ambientUnder_(c,camX,camY,vw,vh,now);
   if(typeof critterEnts_==="function")critterEnts_(ents,c,camX,camY,now,now-(X.lastDraw||now));
   drawDust_(c,camX,camY,now);
   ents.sort((a,b)=>a.y-b.y).forEach(e=>e.draw());
   ambientOver_(c,camX,camY,vw,vh,now,Math.min(60,now-(X.lastDraw||now)));X.lastDraw=now;
+  if(typeof drawCombatOverlay_==="function")drawCombatOverlay_(c,camX,camY,now);
   // ป้าย "!" เหนือครูแฟล็กเมื่อมีเรื่องสำคัญ
   const f=X.npcs.find(n=>n.id==="flag");
   if(f&&(!save.explore.talkedFlag||(save.explore.bossDone&&!save.explore.reported))){
@@ -666,7 +642,6 @@ function interact_(){
 function interactAt_(tx,ty){
   const e=save.explore;
   const npc=npcAt_(tx,ty);if(npc)return talkNpc_(npc);
-  const mon=monAt_(tx,ty);if(mon)return startFieldBattle_(mon);
   if(bossAt_(tx,ty))return startBossBattle_();
   if(tileAt_(tx,ty)==="F")return farmInteract_(tx,ty);
   const prop=propAt_(tx,ty);if(prop&&prop.act)return usePropAct_(prop);

@@ -74,3 +74,8 @@ test("monStateNext_", () => {
   assert.equal(c.monStateNext_("chase", 3, false), "return");
   assert.equal(c.monStateNext_("return", 7, true), "wander");
 });
+
+test("canBeHit_ respects invulnerability", () => {
+  assert.equal(c.canBeHit_(1000, 1500), false);
+  assert.equal(c.canBeHit_(1600, 1500), true);
+});

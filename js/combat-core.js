@@ -91,3 +91,6 @@ function monStateNext_(state,distTiles,inZone){
   if(state==="return")return inZone&&distTiles>5?"wander":"return";
   return "wander";
 }
+
+/* ---- ผู้เล่นอมตะชั่วครู่หลังโดนตี ---- */
+function canBeHit_(now,invulnUntil){return now>invulnUntil}
