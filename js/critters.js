@@ -143,29 +143,50 @@ MS_CHARS.forEach(k=>{MS_SHEETS["ms_"+k]=1});
 const MS_SCALE={ms_npc_kid:0.85};
 function msKeyFor_(k){if(!k)return null;if(MS_SHEETS[k])return k;const s=k.indexOf("hero:")===0?k.slice(5):k;return MS_CHARS.has(s)?"ms_"+s:null}
 
-/* ---- ตัวผู้เล่นบนแผนที่: ตัวละครจาก Farm RPG Tiny Asset Pack (farm_hero_idle/walk.png) ----
-   ช่อง 32×32 · แถว 0 ลง · 1 ขึ้น · 2 หันขวา (หันซ้าย = กลับภาพ) · ยืน 4 เฟรม เดิน 6 เฟรม
-   ซื้อเสื้อที่ราวเสื้อ → เปลี่ยนสีชุดเอี๊ยม (เข้ม/กลาง) และเสื้อ (สว่าง) ตาม OUTFIT_PAL */
-const FARM_HERO_FOOT=25,FARM_HERO_SCALE=1.5,FARM_HERO_SHIRT=["#1f1f38","#1a3473","#2eafc7"],FARM_HERO_CACHE={};
-packImg_("farm_hero_idle");packImg_("farm_hero_walk");   // โหลดไว้ก่อนเข้าแผนที่
-function farmHeroImg_(anim){
-  const base=packImg_("farm_hero_"+anim);if(!base.complete||!base.naturalWidth)return null;
-  const to=save&&save.outfit&&typeof OUTFIT_PAL!=="undefined"&&OUTFIT_PAL[save.outfit];if(!to)return base;
-  const ck=anim+save.outfit;if(FARM_HERO_CACHE[ck])return FARM_HERO_CACHE[ck];
-  const cv=document.createElement("canvas");cv.width=base.naturalWidth;cv.height=base.naturalHeight;const c=cv.getContext("2d");c.drawImage(base,0,0);
-  const id=c.getImageData(0,0,cv.width,cv.height),d=id.data,map={};FARM_HERO_SHIRT.forEach((h,i)=>{map[h]=to[i]});
-  for(let i=0;i<d.length;i+=4){if(!d[i+3])continue;const t=map["#"+[d[i],d[i+1],d[i+2]].map(v=>v.toString(16).padStart(2,"0")).join("")];
-    if(t){d[i]=parseInt(t.slice(1,3),16);d[i+1]=parseInt(t.slice(3,5),16);d[i+2]=parseInt(t.slice(5,7),16)}}
-  c.putImageData(id,0,0);return FARM_HERO_CACHE[ck]=cv;
+/* ---- ตัวผู้เล่น: Soldier จาก Tiny RPG Character Asset Pack 01 (soldier_idle/walk.png) ----
+   ช่อง 100×100 เรียงแนวนอน หันขวา (หันซ้าย = กลับภาพ · เดินขึ้น/ลง = หันทางเดิมไว้) · เท้าอยู่แถว 56 กลางตัว x=49 (ลบเงาที่ติดมากับภาพออกแล้ว)
+   ชุดเกราะ (สีเทาฟ้า) และเสื้อ (สีแดง) ย้อมตามสีอาชีพ (HERO_SHIRT) · ซื้อเสื้อที่ราวเสื้อ → ใช้สีนั้นแทน · นักเรียนชาย = สีเดิมของภาพ */
+const HERO_SP={foot:56,cx:49,scale:1.5,frames:{idle:6,walk:8}},HERO_SP_CACHE={};
+["idle","walk"].forEach(a=>packImg_("soldier_"+a));   // โหลดไว้ก่อนเข้าแผนที่
+function heroSpriteColor_(avatar,outfit){
+  if(outfit&&OUTFIT_PAL[outfit])return outfit;
+  const k=heroKey(avatar);return k==="student_m"?null:HERO_SHIRT[k]||null;
 }
-function drawFarmHero_(c,dir,fx,fy,camX,camY,ent,now){
-  const moving=ent&&ent.t<1,img=farmHeroImg_(moving?"walk":"idle");if(!img)return false;
-  const f=Math.floor(now/(moving?100:240))%(moving?6:4),row=dir==="down"?0:dir==="up"?1:2;
+// ย้อมสีตามอาชีพ: เกราะเทาฟ้า (น้ำเงินมากกว่าแดง) → ผสมสีอาชีพตามความสว่าง · ผ้าสีแดง → สีอาชีพ เข้ม/กลาง/สว่าง
+function heroSpriteImg_(anim,avatar,outfit){
+  if(avatar===undefined){avatar=save&&save.avatar;outfit=save&&save.outfit}
+  const base=packImg_("soldier_"+anim);if(!base.complete||!base.naturalWidth)return null;
+  const col=heroSpriteColor_(avatar,outfit),to=col&&SHIRT_BASE[col];if(!to)return base;
+  const ck=anim+col;if(HERO_SP_CACHE[ck])return HERO_SP_CACHE[ck];
+  const rgb=to.map(h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)));
+  const cv=document.createElement("canvas");cv.width=base.naturalWidth;cv.height=base.naturalHeight;const c=cv.getContext("2d");c.drawImage(base,0,0);
+  const id=c.getImageData(0,0,cv.width,cv.height),d=id.data;
+  const mid=rgb[1],midL=(mid[0]+mid[1]+mid[2])/3||1;
+  for(let i=0;i<d.length;i+=4){const r=d[i],g=d[i+1],b=d[i+2];if(!d[i+3])continue;
+    if(r>=60&&g<=r*0.5&&Math.abs(g-b)<=12){const t=rgb[r<85?0:r<120?1:2];d[i]=t[0];d[i+1]=t[1];d[i+2]=t[2];continue}   // ผ้าแดง
+    if(r>50&&b-r>=12&&b-r<=45){const k=(r+g+b)/3/midL;   // เกราะเทาฟ้า: คงความมืด/สว่างเดิม แต่เปลี่ยนเป็นสีอาชีพ
+      for(let j=0;j<3;j++)d[i+j]=Math.min(255,Math.round(d[i+j]*0.3+mid[j]*k*0.7))}}
+  c.putImageData(id,0,0);return HERO_SP_CACHE[ck]=cv;
+}
+function drawHeroSprite_(c,dir,fx,fy,camX,camY,ent,now){
+  const moving=ent&&ent.t<1,anim=moving?"walk":"idle",img=heroSpriteImg_(anim);if(!img)return false;
+  if(dir==="left"||dir==="right")ent._face=dir;
+  const f=Math.floor(now/(moving?95:150))%HERO_SP.frames[anim],flip=(ent._face||"right")==="left",s=HERO_SP.scale;
   const x=Math.round(fx*TS+8-camX),y=Math.round(fy*TS+TS-camY);
   c.fillStyle="rgba(0,0,0,.26)";c.beginPath();c.ellipse(x,y-1,6,2.2,0,0,Math.PI*2);c.fill();
-  c.save();c.translate(x,y);c.scale(dir==="left"?-FARM_HERO_SCALE:FARM_HERO_SCALE,FARM_HERO_SCALE);c.imageSmoothingEnabled=false;   // ขยายให้สูงพอ ๆ กับชาวบ้าน Mana Seed
-  c.drawImage(img,f*32,row*32,32,32,-16,-FARM_HERO_FOOT-1,32,32);c.restore();
+  c.save();c.translate(x,y);c.scale(flip?-s:s,s);c.imageSmoothingEnabled=false;   // ขยายให้สูงพอ ๆ กับชาวบ้าน Mana Seed
+  c.drawImage(img,f*100,0,100,100,-HERO_SP.cx,-HERO_SP.foot-1,100,100);c.restore();
   return true;
+}
+// รูปตัวละครสำหรับช่องเลือก/หน้าข้อมูลตัวละคร: ท่ายืน สีตามอาชีพ (ยังไม่โหลด → null)
+const HERO_SP_ICON={};
+function heroSpriteIcon_(avatar,size,outfit){
+  const col=heroSpriteColor_(avatar,outfit)||"base";
+  let url=HERO_SP_ICON[col];
+  if(!url){const img=heroSpriteImg_("idle",avatar,outfit);if(!img)return null;
+    const cv=document.createElement("canvas");cv.width=20;cv.height=21;const c=cv.getContext("2d");c.imageSmoothingEnabled=false;
+    c.drawImage(img,39,37,20,21,0,0,20,21);url=HERO_SP_ICON[col]=cv.toDataURL()}
+  return `<img class="sprite pixelated" src="${url}" height="${size}" width="${Math.round(size*20/21)}" alt="">`;
 }
 
 /* ---- มอนสเตอร์ในทุ่ง: ปีศาจ/อสูรจากชุด Tiny RPG ย้อมสีตามทุ่ง ---- */

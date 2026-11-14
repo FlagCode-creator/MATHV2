@@ -11,6 +11,26 @@ const FX_COLORS={slash:["#ffffff","#e0f2fe","#fde68a"],fire:["#fff3a0","#ffb020"
   water:["#e0f7ff","#7dd3fc","#38bdf8","#0ea5e9"],magic:["#f5d0fe","#c084fc","#a855f7","#fde047"],
   ninja:["#ffffff","#cbd5e1","#f87171"],arrow:["#fef9c3","#fde047","#a3e635"]};
 const rnd_=(a,b)=>a+Math.random()*(b-a);
+
+/* ---- ภาพเอฟเฟกต์เคลื่อนไหว: Super Pixel Effects Gigapack (Will Tice / unTied Games) ----
+   assets/fx/<ชื่อ>.png = เฟรมเรียงแนวนอนเป็นแถบเดียว · [กว้าง, สูง, จำนวนเฟรม] ต่อเฟรม */
+const FX_SHEETS={slash:[140,50,7],hit:[96,96,7],crit:[160,160,8],fire:[96,96,9],water:[96,96,10],magic:[96,96,10],
+  ninja:[80,80,6],arrow:[80,80,5],hurt:[48,48,7],smoke:[96,96,15],coins:[64,64,31],heal:[64,64,16],shield:[64,64,18],levelup:[160,64,43]};
+const FX_VER="1";
+Object.keys(FX_SHEETS).forEach(k=>{const i=new Image();i.src=`assets/fx/${k}.png?v=${FX_VER}`});   // โหลดไว้ก่อน จะได้ไม่กระตุกตอนเล่น
+// เล่นเอฟเฟกต์ 1 รอบแล้วลบทิ้ง · layer = กล่องที่จะวางทับ (ไม่ระบุ = กลางจอ) · x,y เป็น % ของกล่อง
+function spriteFx_(name,{layer,x=50,y=50,scale=1,fps=18,flip=false,delay=0}={}){
+  const m=FX_SHEETS[name];if(!m)return Promise.resolve();
+  const [w,h,n]=m,W=Math.round(w*scale),H=Math.round(h*scale);
+  const el=fxEl_("fx-sprite"+(layer?"":" fixed"),layer||document.body,
+    `width:${W}px;height:${H}px;left:${x}%;top:${y}%;background-image:url(assets/fx/${name}.png?v=${FX_VER});background-size:${W*n}px ${H}px;`+
+    `transform:translate(-50%,-50%)${flip?" scaleX(-1)":""};opacity:0`);
+  return new Promise(res=>{
+    const a=el.animate([{backgroundPositionX:"0px",opacity:1},{backgroundPositionX:`${-W*n}px`,opacity:1}],
+      {duration:n*1000/fps,delay,easing:`steps(${n})`,fill:"forwards"});
+    a.onfinish=()=>{el.remove();res()};
+  });
+}
 const fxEl_=(cls,parent,style)=>{const d=document.createElement("div");d.className=cls;if(style)d.setAttribute("style",style);(parent||document.body).appendChild(d);return d};
 const fxKill_=(el,ms)=>setTimeout(()=>el.remove(),ms);
 
@@ -45,25 +65,15 @@ function attackFx_(avatar,crit){
   const layer=document.getElementById("fx-layer");if(!layer)return;
   const type=HERO_FX[avatar]||"slash",col=FX_COLORS[type],big=crit?1.35:1;
   const box=fxEl_("fx-box",layer);fxKill_(box,1000);
-  if(type==="slash"){
-    fxEl_("fx-slash",box,`--r0:-70deg;--r1:25deg;--s:${big}`);
-    if(crit)fxEl_("fx-slash",box,`--r0:110deg;--r1:205deg;--s:${big};animation-delay:90ms`);
-  }else if(type==="ninja"){
-    [-35,25,80].forEach((r,i)=>fxEl_("fx-cut",box,`--r:${r}deg;animation-delay:${i*70}ms;--s:${big}`));
-    fxEl_("fx-star",box,"");
-  }else if(type==="arrow"){
-    fxEl_("fx-arrow",box,"");if(crit)fxEl_("fx-arrow",box,"animation-delay:90ms;top:44%");
-  }else if(type==="fire"){
-    fxEl_("fx-glow",box,"--g:rgba(255,120,20,.85)");
-    burst_(box,{n:crit?26:18,colors:col,spread:70*big,up:60,size:12,dur:700,cls:"rise"});
-  }else if(type==="water"){
-    fxEl_("fx-ring",box,"--c:#7dd3fc");if(crit)fxEl_("fx-ring",box,"--c:#e0f7ff;animation-delay:120ms");
-    burst_(box,{n:crit?26:18,colors:col,spread:95*big,up:-10,size:10,dur:650,cls:"drop"});
-  }else if(type==="magic"){
-    fxEl_("fx-ring",box,"--c:#c084fc");fxEl_("fx-glow",box,"--g:rgba(192,132,252,.7)");
-    for(let i=0;i<(crit?12:8);i++){const a=i/(crit?12:8)*Math.PI*2,r=rnd_(60,95)*big;
-      const st=fxEl_("fx-twinkle",box,`--dx:${Math.round(Math.cos(a)*r)}px;--dy:${Math.round(Math.sin(a)*r)}px;color:${col[i%col.length]};animation-delay:${i*20}ms`);st.textContent="✦"}
-  }
+  // ภาพเอฟเฟกต์ตามอาชีพ + แรงกระแทกตอนโดน (คริติคอล = ระเบิดใหญ่เพิ่ม) · ลูกศรบินเข้าไปก่อนแล้วค่อยระเบิด
+  const late=type==="arrow"?170:0;
+  if(type==="arrow"){fxEl_("fx-arrow",box,"");if(crit)fxEl_("fx-arrow",box,"animation-delay:90ms;top:44%")}
+  spriteFx_(type,{layer,y:52,scale:1.7*big,flip:type==="slash"&&Math.random()<0.5,delay:late});
+  spriteFx_("hit",{layer,x:rnd_(44,56),y:rnd_(46,58),scale:1.1*big,delay:late+90});
+  if(crit)spriteFx_("crit",{layer,y:50,scale:1.3,delay:late+60});
+  if(type==="fire")burst_(box,{n:crit?20:12,colors:col,spread:70*big,up:60,size:10,dur:700,cls:"rise"});
+  else if(type==="water")burst_(box,{n:crit?20:12,colors:col,spread:95*big,up:-10,size:9,dur:650,cls:"drop"});
+  else if(type==="magic")burst_(box,{n:crit?20:12,colors:col,spread:90*big,size:7,dur:650});
   // ประกายตอนโดน (ทุกอาชีพ)
   setTimeout(()=>burst_(box,{n:crit?14:9,colors:["#ffffff","#fef08a","#fde047"],spread:60*big,size:6,dur:420}),type==="arrow"?170:60);
 }
@@ -94,8 +104,11 @@ function enemyBurst_(){
   }catch(e){}
   const box=fxEl_("fx-box",layer);fxKill_(box,1600);
   burst_(box,{n:34,colors,spread:110,up:30,size:10,dur:900,cls:"fall"});
-  for(let i=0;i<5;i++)fxEl_("fx-coin",box,`--dx:${Math.round(rnd_(-70,70))}px;animation-delay:${250+i*70}ms`);
+  spriteFx_("smoke",{layer,y:55,scale:1.8,fps:20});
+  spriteFx_("coins",{layer,y:45,scale:2.2,fps:24,delay:250});
 }
+// เอฟเฟกต์ที่ตัวผู้เล่น (โดนตี · ฟื้นพลัง · โล่) — วางทับรูปผู้เล่นในแถบล่าง
+function playerFx_(name){spriteFx_(name,{layer:document.getElementById("player-avatar"),scale:name==="hurt"?1.6:1.3,fps:name==="hurt"?20:22})}
 
 /* ---- ป้ายเปิดตัวบอส ---- */
 function bossBanner_(name,title){

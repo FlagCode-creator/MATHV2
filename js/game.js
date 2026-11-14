@@ -137,10 +137,12 @@ function renderTitle(refreshOnly){
   showTitleForm("menu");
   showScreen("title");
 }
+// ช่องเลือก/หน้าข้อมูลตัวละคร: ใช้ตัวเดินบนแผนที่ (Soldier สีตามอาชีพ) · ภาพยังไม่โหลด → ภาพชิบิ
+function pickerHeroImg_(a,size,outfit){return heroSpriteIcon_(a,size,outfit)||heroImg(a,size)}
 function renderAvatarGrid_(elId,selected,onPick){
   const grid=$(elId);grid.innerHTML="";
   AVATARS.forEach(a=>{
-    const b=document.createElement("button");b.type="button";b.innerHTML=heroImg(a,36);b.title=HERO_CLASSES[a].name;
+    const b=document.createElement("button");b.type="button";b.innerHTML=pickerHeroImg_(a,36)+`<small>${esc(HERO_CLASSES[a].name)}</small>`;b.title=HERO_CLASSES[a].name;
     if(a===selected)b.className="sel";
     b.onclick=()=>{SFX.click();onPick(a)};
     grid.appendChild(b);
@@ -529,7 +531,7 @@ async function enemyAttack_(){
   sp.classList.remove("attack");void sp.offsetWidth;sp.classList.add("attack");enemyAct_("attack");
   await sleep(250);
   if(B.shield){
-    B.shield=false;SFX.block();floatText_("BLOCK!","miss");toast("🛡️ โล่ป้องกันการโจมตีไว้ได้!");
+    B.shield=false;SFX.block();playerFx_("shield");floatText_("BLOCK!","miss");toast("🛡️ โล่ป้องกันการโจมตีไว้ได้!");
     updateBattleHud_();return;
   }
   let dmg=e.atk*(0.9+Math.random()*0.2)*damageTakenMul();
@@ -537,7 +539,7 @@ async function enemyAttack_(){
   B.charging=false;$("charge-warning").classList.add("hidden");
   dmg=Math.max(1,Math.round(dmg));
   p.hp=Math.max(0,p.hp-dmg);
-  SFX.hurt();
+  SFX.hurt();playerFx_("hurt");
   const pb=document.querySelector(".player-box");pb.classList.remove("hurt");void pb.offsetWidth;pb.classList.add("hurt");playerAct_("hurt");
   toast(`💢 โดนโจมตี −${dmg} HP`);
   updateBattleHud_();
@@ -550,9 +552,9 @@ function useItem(k){
   if(k==="potion"){
     if(p.hp>=p.maxHp)return;
     const heal=Math.round(p.maxHp*0.4);p.hp=Math.min(p.maxHp,p.hp+heal);
-    SFX.heal();floatText_("+"+heal+" HP","heal");toast(`🧪 ฟื้นพลัง +${heal} HP`);
+    SFX.heal();playerFx_("heal");floatText_("+"+heal+" HP","heal");toast(`🧪 ฟื้นพลัง +${heal} HP`);
   }else if(k==="shield"){
-    if(B.shield)return;B.shield=true;SFX.item();toast("🛡️ ตั้งโล่แล้ว! กันการโจมตีครั้งถัดไป");
+    if(B.shield)return;B.shield=true;SFX.item();playerFx_("shield");toast("🛡️ ตั้งโล่แล้ว! กันการโจมตีครั้งถัดไป");
   }else if(k==="fifty"){
     if(B.fiftyUsed)return;B.fiftyUsed=true;
     const wrong=[...document.querySelectorAll("#q-answers .answer")].filter(b=>!checkAnswer_(b.dataset.value,B.q.answer));
@@ -661,7 +663,7 @@ async function endBattle_(won){
   $("result-explore").classList.toggle("hidden",!ex);
   $("result-explore").textContent=ex&&!won?"🏠 กลับหมู่บ้าน":"🧭 ผจญภัยต่อ";
   showScreen("result");
-  if(ups.length){SFX.levelUp();await sleep(400);await playDialog([{...LINES.levelUp,text:`${LINES.levelUp.text} (Lv.${save.level} · HP ${effMaxHp()} · ATK ${effAtk()}) และได้แต้มทักษะ +${ups.length} — ไปอัปได้ที่ "🌳 ทักษะ"`}])}
+  if(ups.length){SFX.levelUp();spriteFx_("levelup",{scale:2.2,fps:20});await sleep(1600);await playDialog([{...LINES.levelUp,text:`${LINES.levelUp.text} (Lv.${save.level} · HP ${effMaxHp()} · ATK ${effAtk()}) และได้แต้มทักษะ +${ups.length} — ไปอัปได้ที่ "🌳 ทักษะ"`}])}
   if(finalCleared)await playDialog(FINAL_VICTORY);
   else if(worldCleared)await playDialog([LINES.worldClear]);
 }
@@ -704,7 +706,7 @@ function buyItem(k){
 function openHero(from){
   SFX.click();navBack=from||"map";
   const s=save.stats,total=s.correct+s.wrong;
-  $("hero-avatar").innerHTML=heroImg(save.avatar,72);
+  $("hero-avatar").innerHTML=pickerHeroImg_(save.avatar,72,save.outfit);
   $("hero-name").textContent=save.name;
   $("hero-title").textContent=`Lv.${save.level} · ${heroTitle(save.level)}`;
   $("hero-account").textContent=save.studentId?`บัญชีนักเรียน: ${save.studentId}`:"ผู้เยี่ยมชม (เซฟอยู่ในเครื่องนี้เท่านั้น)";
@@ -716,7 +718,7 @@ function openHero(from){
     cell("🔥 คอมโบสูงสุด",s.bestCombo),cell("💥 คริติคอล",s.crits),
     cell("👑 ปราบบอส",s.bossKills),cell("🗺️ ดินแดนที่กู้คืน",`${WORLDS.filter((w,i)=>bossCleared_(save,i)).length}/${WORLDS.length}`)
   ].join("");
-  renderAvatarGrid_("hero-avatars",save.avatar,function pick(a){save.avatar=a;persist();$("hero-avatar").innerHTML=heroImg(a,72);renderAvatarGrid_("hero-avatars",a,pick)});
+  renderAvatarGrid_("hero-avatars",save.avatar,function pick(a){save.avatar=a;persist();$("hero-avatar").innerHTML=pickerHeroImg_(a,72,save.outfit);renderAvatarGrid_("hero-avatars",a,pick)});
   showScreen("hero");
 }
 function resetProgress(){

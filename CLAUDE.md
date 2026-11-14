@@ -18,12 +18,12 @@ V1 อยู่ที่ repo `FlagCode-creator/Mathematics-Challenge` — **ห
 | `js/backgrounds.js` | ฉากต่อสู้ (`bgURL`, ดินแดน 1 ใช้ `farmBattleBg_` จากชุด Farm RPG + แบบกลางคืน) |
 | `js/tiles.js` | วาดพื้นแผนที่: หญ้า ทาง น้ำ ลานหิน สะพาน ทานตะวัน ในบ้าน · ภาพ Farm RPG (`farmImg_`, `mapleCrop_`) |
 | `js/custom-assets.js` | โหลดภาพใหญ่จาก `assets/custom/manifest.json` (portraits, sprites, talk, expressions, poses, backgrounds, characters) |
-| `js/fx.js` | เอฟเฟกต์ต่อสู้: เปลี่ยนฉาก, โจมตีตามอาชีพ, คริติคอล cut-in, มอนแตก, ป้ายบอส |
+| `js/fx.js` | เอฟเฟกต์ต่อสู้ (ภาพเคลื่อนไหวจาก Super Pixel Effects ใน `assets/fx/`, `spriteFx_`): เปลี่ยนฉาก, โจมตีตามอาชีพ, คริติคอล cut-in, มอนแตก, ป้ายบอส |
 | `js/icons.js` | แทนอีโมจิด้วยไอคอนพิกเซล (`assets/icons`) อัตโนมัติ |
 | `js/explore-data.js` | แผนที่ `village` (40×24) และ `field` (112×24), NPC, ประตู, ปริศนา, โซน A–E |
 | `js/explore.js` | เอนจินโหมดผจญภัย: โหลดแผนที่, เดิน, ชน, วาร์ป, วาดฉาก, ประตูหิน, สะพาน, ปริศนา, หีบ, บอส |
 | `js/ambient.js` | บรรยากาศ: ผีเสื้อ ใบไม้ เมฆ กลางวัน/กลางคืน (`DAY0_`, 1 วัน = 8 นาที) หิ่งห้อย ฟองอารมณ์ น้ำพุ |
-| `js/critters.js` | ตัวผู้เล่นบนแผนที่ใช้ตัวละคร Farm RPG (`farm_hero_*.png`, `drawFarmHero_`) ทุกอาชีพ · NPC ใช้ตัวเดิน Mana Seed (`ms_*.png`, 4 ทิศ), สัตว์ฟาร์ม, มอนสเตอร์ Tiny RPG ย้อมสีตามทุ่ง, ปีศาจกลางคืน |
+| `js/critters.js` | ตัวผู้เล่นบนแผนที่และช่องเลือกตัวละครใช้ Soldier จาก Tiny RPG 01 (`soldier_*.png`, `drawHeroSprite_`, `heroSpriteIcon_`) ย้อมสีเสื้อตามอาชีพ · NPC ใช้ตัวเดิน Mana Seed (`ms_*.png`, 4 ทิศ), สัตว์ฟาร์ม, มอนสเตอร์ Tiny RPG ย้อมสีตามทุ่ง, ปีศาจกลางคืน |
 | `js/interiors.js` | ในบ้าน 4 หลัง (ร้านค้า โรงแรม โรงเรียน บ้านน้องต้นกล้า) |
 | `js/life.js` | ฟาร์มคณิต, ภารกิจรายวัน, สมุดมอนสเตอร์, ราวเสื้อ |
 | `js/data.js` `save.js` `audio.js` `skills.js` | ข้อมูลเกม · เซฟ (localStorage `mq2_`) · เสียง + เพลงชิปทูน · ต้นไม้ทักษะ |
