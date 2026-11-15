@@ -6,7 +6,8 @@ const FOOT_W=10,FOOT_H=6,MON_W=12,MON_H=8;
 const FOOT_DY=14;
 
 function footPx_(fx,fy){return [fx*TS+8,fy*TS+FOOT_DY]}
-function footTile_(fx,fy){const [px,py]=footPx_(fx,fy);return [Math.floor(px/TS),Math.floor(py/TS)]}
+// เท้าแตะขอบบนของช่องข้างล่างพอดี ยังนับว่าอยู่ช่องเดิม (ลบ 1e-6 กันปัดลงไปช่องกำแพง)
+function footTile_(fx,fy){const [px,py]=footPx_(fx,fy);return [Math.floor(px/TS),Math.floor((py-1e-6)/TS)]}
 
 // ช่องที่กล่องทับ (ขอบขวา/ล่างไม่นับช่องถัดไปถ้าแตะพอดี)
 function boxTiles_(x0,y0,x1,y1){
@@ -58,6 +59,16 @@ function facingTile_(fx,fy,dir,reachPx=10){
   return [Math.floor(cx/TS),Math.floor(cy/TS)];
 }
 
+// ช่องที่จะลองคุย/ตรวจสอบตามลำดับ: ช่องตรงหน้า (จากกลางเท้า) → ช่องใต้มุมหน้าอีกสองมุมของกล่องเท้า → ช่องที่ยืนอยู่
+function interactTargets_(fx,fy,dir){
+  const [px,py]=footPx_(fx,fy),[vx,vy]=DIR_V[dir]||[0,1],reach=10,out=[],seen=new Set();
+  const add=(x,y)=>{const t=[Math.floor(x/TS),Math.floor((y-1e-6)/TS)],k=t.join(",");if(!seen.has(k)){seen.add(k);out.push(t)}};
+  out.push(facingTile_(fx,fy,dir));seen.add(out[0].join(","));
+  if(vx){const x=px+vx*(reach+FOOT_W/2);add(x,py-FOOT_H+1);add(x,py-1)}
+  else{const y=py-FOOT_H/2+vy*(reach+FOOT_H/2+2);add(px-FOOT_W/2+1,y);add(px+FOOT_W/2-1,y)}
+  add(px,py);
+  return out;
+}
 // อยู่ในระยะและอยู่ครึ่งด้านหน้าของทิศที่หัน
 function inArc_(ox,oy,dir,tx,ty,radiusPx){
   const dx=tx-ox,dy=ty-oy;if(dx*dx+dy*dy>radiusPx*radiusPx)return false;

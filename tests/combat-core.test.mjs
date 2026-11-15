@@ -98,3 +98,16 @@ test("gateReady_ needs an armored kill in zones B-E", () => {
   assert.equal(c.gateNeedsArmor_("A"), false);
   assert.equal(c.gateNeedsArmor_("E"), true);
 });
+
+test("footTile_ stays on its own row when flush against a wall below", () => {
+  // foot y = 21.125*16+14 = 352 = exactly the top edge of row 22
+  assert.deepEqual([...c.footTile_(30, 21.125)], [30, 21]);
+});
+
+test("interactTargets_ includes the tile under the box's other front corner", () => {
+  // fx=3.3 → foot x 60.8, box spans x 55.8..65.8 → columns 3 and 4; facing up from row 4
+  const t = c.interactTargets_(3.3, 4, "up").map(a => a.join(","));
+  assert.ok(t.includes("3,3") && t.includes("4,3"), t.join(" "));
+  assert.equal(t[t.length - 1], "3,4");                 // own tile is the last resort
+  assert.equal(new Set(t).size, t.length);              // no duplicates
+});

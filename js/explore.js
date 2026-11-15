@@ -24,7 +24,7 @@ async function enterExplore(){
   checkZone_();
   if(first)await exSay_([
     {mood:"hello",text:"ยินดีต้อนรับสู่โหมดผจญภัย! ตอนนี้เธอเดินสำรวจหมู่บ้านและทุ่งหญ้าได้เองแล้ว"},
-    {mood:"explain",text:"ลากจอยด้านล่างซ้ายเพื่อเดิน กดปุ่ม A เพื่อคุย อ่านป้าย เปิดหีบ หรือฟันมอนสเตอร์ (บนคอม: ลูกศร/WASD เดิน · Space ฟัน/คุย · Z คุย)"},
+    {mood:"explain",text:"ลากจอยด้านล่างซ้ายเพื่อเดิน กดปุ่ม A เพื่อคุย อ่านป้าย เปิดหีบ หรือฟันมอนสเตอร์ ปุ่ม ✨ คือสกิลคิดเลข ตอบถูกแล้วทำลายเกราะได้ (บนคอม: ลูกศร/WASD เดิน · Space ฟัน/คุย · Z คุย · K สกิล)"},
     {mood:"remind",text:"ครูรออยู่ที่ลานน้ำพุกลางหมู่บ้าน มาคุยกับครูก่อนนะ แล้วครูจะบอกภารกิจแรกให้"}
   ]);
 }
@@ -43,7 +43,7 @@ function reportError_(err,where){
   console.error(where,err);
 }
 window.addEventListener("error",ev=>{if($("screen-explore")&&$("screen-explore").classList.contains("active"))reportError_(ev.error||ev.message,"explore")});
-function stopExplore_(){if(X)X.running=false;X&&(X.held=null)}
+function stopExplore_(){if(X){X.running=false;X.held=null;X.attackHeld=false}EX_KEYS.clear();EX_STICK.x=EX_STICK.y=0}
 // กลับมาจากฉากต่อสู้/ร้านค้า/ทักษะ
 async function resumeExplore(){
   if(!save||!save.explore){goMap();return}
@@ -507,17 +507,20 @@ function bindExploreControls_(){
   ea.addEventListener("pointerdown",ev=>{ev.preventDefault();if(!X||X.busy)return;if(interact_())return;X.attackHeld=true;swing_(performance.now())});
   ["pointerup","pointercancel","pointerleave"].forEach(t=>ea.addEventListener(t,release));
   $("ex-skill").addEventListener("pointerdown",ev=>{ev.preventDefault();useSkill_()});
-  const keyDir={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right",w:"up",s:"down",a:"left",d:"right",W:"up",S:"down",A:"left",D:"right"};
+  // ใช้ปุ่มจริงบนแป้น (ev.code) → ใช้ได้แม้เปลี่ยนแป้นเป็นภาษาไทย
+  const keyDir={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right",KeyW:"up",KeyS:"down",KeyA:"left",KeyD:"right"};
+  const isAttack=c=>c==="Space"||c==="KeyJ",isTalk=c=>c==="Enter"||c==="NumpadEnter"||c==="KeyZ",isSkill=c=>c==="KeyK"||c==="KeyX";
   document.addEventListener("keydown",ev=>{
     if(!X||!$("screen-explore").classList.contains("active"))return;
-    if(!$("dialog").classList.contains("hidden")){if(ev.key===" "||ev.key==="Enter"){ev.preventDefault();advanceDialog()}return}
-    if(!$("puzzle-modal").classList.contains("hidden"))return;
-    if(keyDir[ev.key]){ev.preventDefault();EX_KEYS.add(keyDir[ev.key])}
-    else if(ev.key===" "||ev.key==="j"||ev.key==="J"){ev.preventDefault();if(ev.repeat||X.busy)return;if(interact_())return;X.attackHeld=true;swing_(performance.now())}
-    else if(ev.key==="Enter"||ev.key==="z"||ev.key==="Z"){ev.preventDefault();interact_()}
-    else if(ev.key==="k"||ev.key==="K"||ev.key==="x"||ev.key==="X"){ev.preventDefault();if(!ev.repeat)useSkill_()}
+    const c=ev.code;
+    if(!$("dialog").classList.contains("hidden")){if(c==="Space"||isTalk(c)){ev.preventDefault();advanceDialog()}return}
+    if(!$("puzzle-modal").classList.contains("hidden"))return;   // หน้าต่างโจทย์รับปุ่มเอง (askTimed_)
+    if(keyDir[c]){ev.preventDefault();EX_KEYS.add(keyDir[c])}
+    else if(isAttack(c)){ev.preventDefault();if(ev.repeat||X.busy)return;if(interact_())return;X.attackHeld=true;swing_(performance.now())}
+    else if(isTalk(c)){ev.preventDefault();interact_()}
+    else if(isSkill(c)){ev.preventDefault();if(!ev.repeat)useSkill_()}
   });
-  document.addEventListener("keyup",ev=>{if(keyDir[ev.key])EX_KEYS.delete(keyDir[ev.key]);if((ev.key===" "||ev.key==="j"||ev.key==="J")&&X)X.attackHeld=false});
+  document.addEventListener("keyup",ev=>{if(keyDir[ev.code])EX_KEYS.delete(keyDir[ev.code]);if(isAttack(ev.code)&&X)X.attackHeld=false});
   window.addEventListener("blur",()=>{EX_KEYS.clear();if(X)X.attackHeld=false});
 }
 
@@ -606,7 +609,7 @@ function closeExMenu(){$("ex-menu").classList.add("hidden");if(X)X.busy=false}
 /* ====================================================================== */
 /* บทสนทนา / ปริศนา                                                         */
 /* ====================================================================== */
-async function exSay_(lines){if(X){X.busy=true;X.held=null}await playDialog(lines);if(X)X.busy=false}
+async function exSay_(lines){if(X){X.busy=true;X.held=null;X.attackHeld=false}await playDialog(lines);if(X)X.busy=false}
 const say=(npc,text,pose)=>({sprite:npc.sprite,name:npc.name,text,pose});
 
 // กล่องใส่คำตอบตัวเลข (ปุ่มกดบนจอ) — คืนค่า true เมื่อตอบถูก
@@ -659,9 +662,10 @@ function askTimed_({title,text,answer,options,seconds,portrait}){
     const finish=(ok,timedOut)=>{
       if(done)return;done=true;clearInterval(timer);
       keys.querySelectorAll("button").forEach(b=>b.disabled=true);$("pz-ok").disabled=$("pz-cancel").disabled=true;
+      document.removeEventListener("keydown",onKey,true);
       const close=()=>{$("puzzle-modal").classList.add("hidden");bar.classList.add("hidden");$("pz-input").classList.remove("hidden");keys.classList.remove("choices");
         $("pz-ok").disabled=$("pz-cancel").disabled=false;$("pz-ok").classList.remove("hidden");$("pz-ok").textContent="✓ ยืนยัน";$("pz-cancel").textContent="ไว้ก่อน";
-        if(X)X.busy=false;res({ok,timedOut})};
+        if(X){X.busy=false;X.invulnUntil=Math.max(X.invulnUntil||0,performance.now()+1000)}res({ok,timedOut})};   // ปิดโจทย์แล้วอมตะ 1 วิ (ตอบผิดไม่เสีย HP)
       if(ok){SFX.win();setTimeout(close,250);return}
       SFX.hurt();card.classList.remove("shake");void card.offsetWidth;card.classList.add("shake");
       $("pz-hint").textContent=(timedOut?"⏰ หมดเวลา! ":"")+"คำตอบคือ "+answer;$("pz-hint").classList.remove("hidden");
@@ -682,6 +686,17 @@ function askTimed_({title,text,answer,options,seconds,portrait}){
       $("pz-ok").classList.add("hidden");
     }
     $("pz-ok").textContent="✓ ตอบ";$("pz-cancel").textContent="ข้าม";
+    // คีย์บอร์ด: ตัวเลข · − · Backspace · Enter = ตอบ · Esc = ข้าม · ตัวเลือก: 1–4
+    const onKey=ev=>{if(done)return;const c=ev.code,d=/^(Digit|Numpad)(\d)$/.exec(c);
+      if(numeric){
+        if(d){ev.preventDefault();if(val.length<7)val+=d[2];show()}
+        else if(c==="Minus"||c==="NumpadSubtract"){ev.preventDefault();val=val.startsWith("-")?val.slice(1):"-"+val;show()}
+        else if(c==="Backspace"){ev.preventDefault();val=val.slice(0,-1);show()}
+        else if(c==="Enter"||c==="NumpadEnter"){ev.preventDefault();$("pz-ok").onclick()}
+      }else if(d){const b=keys.querySelectorAll("button")[Number(d[2])-1];if(b){ev.preventDefault();b.dispatchEvent(new PointerEvent("pointerdown",{bubbles:true}))}}
+      if(c==="Escape"){ev.preventDefault();finish(false,false)}
+      ev.stopPropagation()};
+    document.addEventListener("keydown",onKey,true);
     $("pz-cancel").onclick=()=>{SFX.click();finish(false,false)};
     const t0=performance.now(),ms=seconds*1000,fill=bar.firstElementChild;
     const tick=()=>{const left=Math.max(0,ms-(performance.now()-t0));fill.style.width=(left/ms*100)+"%";fill.classList.toggle("low",left<3000);if(left<=0)finish(false,true)};
@@ -689,12 +704,12 @@ function askTimed_({title,text,answer,options,seconds,portrait}){
     $("puzzle-modal").classList.remove("hidden");
   });
 }
-// คุย/ตรวจสอบ: ช่องข้างหน้าเท้า (ถ้าไม่มีอะไร ลองช่องที่ยืนอยู่) · คืน true ถ้ามีอะไรให้ทำ
+// คุย/ตรวจสอบ: ช่องข้างหน้าเท้า → ช่องใต้มุมหน้าของกล่องเท้า → ช่องที่ยืนอยู่ · คืน true ถ้ามีอะไรให้ทำ
 const NO_HIT={};
 function interact_(){
   if(!X||X.busy)return false;
   const p=X.p;
-  for(const [tx,ty] of [facingTile_(p.fx,p.fy,p.dir),[p.x,p.y]])if(interactAt_(tx,ty)!==NO_HIT)return true;
+  for(const [tx,ty] of interactTargets_(p.fx,p.fy,p.dir))if(interactAt_(tx,ty)!==NO_HIT)return true;
   return false;
 }
 function interactAt_(tx,ty){

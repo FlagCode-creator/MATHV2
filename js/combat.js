@@ -17,6 +17,14 @@ function initMon_(m,index){
   m.next=performance.now()+rng(300,1500);
   return m;
 }
+function timerSnap_(){return {inv:X.invulnUntil,pow:X.powerUntil,amb:X.nextAmbushAt,pause:new Map(X.mons.map(m=>[m,m.pauseUntil]))}}
+// เลื่อนเฉพาะตัวจับเวลาที่ตั้งไว้ก่อนเปิดหน้าต่างและยังไม่หมด (ค่าที่ถูกตั้งใหม่ตอนปิดหน้าต่าง เช่น คูลดาวน์สกิล ไม่ยุ่ง)
+function resumeTimers_(d,since){
+  const S=X.busySnap||{},shift=(v,old)=>v===old&&Number.isFinite(v)&&v>since?v+d:v;
+  X.invulnUntil=shift(X.invulnUntil,S.inv);X.powerUntil=shift(X.powerUntil,S.pow);X.nextAmbushAt=shift(X.nextAmbushAt,S.amb);
+  X.mons.forEach(m=>{if(S.pause&&S.pause.has(m))m.pauseUntil=shift(m.pauseUntil,S.pause.get(m))});
+  (X.coins||[]).forEach(c=>c.t0+=d);(X.respawns||[]).forEach(r=>r.at+=d);
+}
 const monBlocker_=m=>(x,y)=>blocked_(x,y)||!!npcAt_(x,y)||!inZone_(m.zone,x,y);
 
 function updateCombat_(now,dt){
@@ -25,7 +33,9 @@ function updateCombat_(now,dt){
   X.mons.forEach((m,i)=>{if(m.tier==null)initMon_(m,i)});
   updateSkillButton_(now);updatePowerChip_(now);
   if(X.defShield===undefined)X.defShield=!!(X.m.zones&&skillLv("def")>=3);   // ทักษะป้องกันขั้น 3: กันการชนครั้งแรกหลังเข้าทุ่ง
-  if(X.busy)return;
+  // มีหน้าต่างเปิด (โจทย์/บทสนทนา/เมนู): จำค่าตัวจับเวลาไว้ · ปิดแล้วเลื่อนออกไปเท่าเวลาที่หยุด (เวลาไม่ถูกกินระหว่างเปิดหน้าต่าง)
+  if(X.busy){if(!X.busyAt){X.busyAt=now;X.busySnap=timerSnap_()}return}
+  if(X.busyAt){resumeTimers_(now-X.busyAt,X.busyAt);X.busyAt=0;X.busySnap=null}
   const sec=Math.min(dt||16,50)/1000,[ppx,ppy]=footPx_(X.p.fx,X.p.fy);
   X.mons.forEach(m=>{if(!m.dead)updateMon_(m,now,sec,ppx,ppy)});
   if(X.attackHeld)swing_(now);
@@ -75,7 +85,12 @@ function combatContact_(now){
   if(X.busy)return;
   const [px,py]=footPx_(X.p.fx,X.p.fy);
   const b=X.m.boss;
-  if(b&&!save.explore.bossDone){const [bx,by]=footPx_(b.x,b.y);if(boxesOverlap_(px,py,FOOT_W,FOOT_H,bx,by,16,12)){startBossBattle_();return}}
+  // บอส: ชนแล้วเข้าฉากต่อสู้ครั้งเดียว ต้องเดินออกจากตัวบอสก่อนถึงจะชนใหม่ได้ (ถอย/โหลดเซฟที่ยืนทับบอส → ไม่วนเข้าฉากซ้ำ)
+  if(b&&!save.explore.bossDone){
+    const [bx,by]=footPx_(b.x,b.y),touch=boxesOverlap_(px,py,FOOT_W,FOOT_H,bx,by,16,12);
+    if(X.bossArmed===undefined)X.bossArmed=!touch;
+    if(!touch)X.bossArmed=true;else if(X.bossArmed){X.bossArmed=false;startBossBattle_();return}
+  }
   if(!canBeHit_(now,X.invulnUntil))return;
   const m=X.mons.find(m=>{if(m.dead)return false;const [mx,my]=footPx_(m.fx,m.fy);return boxesOverlap_(px,py,FOOT_W,FOOT_H,mx,my,MON_W,MON_H)});
   if(!m)return;
@@ -213,7 +228,7 @@ function updateCoins_(now,sec){
   if(!X.coins||!X.coins.length)return;
   const [px,py]=footPx_(X.p.fx,X.p.fy);
   X.coins=X.coins.filter(c=>{
-    const age=now-c.t0;if(age>20000)return false;
+    const age=now-c.t0;if(age>20000){save.gold+=c.gold;updateExHud_();persist();return false}   // หมดเวลา → เงินเข้าอยู่ดี
     const dx=px-c.wx,dy=(py-6)-c.wy,d=Math.hypot(dx,dy);
     if(age>400&&d<TS*COIN_PULL_TILES){if(d<5){save.gold+=c.gold;SFX.coin&&SFX.coin();updateExHud_();persist();return false}c.vx=dx/d*160;c.vy=dy/d*160}
     else{c.vx*=Math.pow(0.05,sec);c.vy=c.vy*Math.pow(0.05,sec)+(age<400?180*sec:0)}
